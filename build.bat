@@ -36,6 +36,20 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
+echo Running cargo deny check...
+cargo deny check
+if !errorlevel! neq 0 (
+    echo ERROR: cargo deny check failed
+    exit /b 1
+)
+
+echo Running cargo audit...
+cargo audit
+if !errorlevel! neq 0 (
+    echo ERROR: cargo audit failed
+    exit /b 1
+)
+
 echo.
 echo ========================================
 echo Build completed successfully!

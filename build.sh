@@ -16,6 +16,12 @@ cargo build --release || { echo "ERROR: cargo build --release failed"; exit 1; }
 echo "Running cargo doc..."
 cargo doc --no-deps || { echo "ERROR: cargo doc failed"; exit 1; }
 
+echo "Running cargo deny check..."
+cargo deny check || { echo "ERROR: cargo deny check failed"; exit 1; }
+
+echo "Running cargo audit..."
+cargo audit || { echo "ERROR: cargo audit failed"; exit 1; }
+
 echo ""
 echo "========================================"
 echo "Build completed successfully!"

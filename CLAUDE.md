@@ -68,21 +68,30 @@ cargo clippy
 # Format code
 cargo fmt
 
-# Check licenses and security advisories (requires cargo-deny)
+# Check licenses and security advisories
 cargo deny check
+cargo audit
 ```
 
 ### Development Tools
 
-**cargo-deny** - License and security checker (required)
+**Required security tools:**
 
-Install with:
+- `cargo-deny` - License and advisory checker
 
-```bash
-cargo install cargo-deny
-```
+  ```bash
+  cargo install cargo-deny
+  ```
 
-This project uses `cargo-deny` to enforce permissive open source licenses and check for security vulnerabilities. The configuration in `deny.toml` allows only permissive licenses (MIT, Apache-2.0, BSD, etc.) and denies copyleft licenses (GPL, LGPL, AGPL).
+  Enforces permissive open source licenses and checks for security vulnerabilities. Configuration in `deny.toml` allows only permissive licenses (MIT, Apache-2.0, BSD, etc.) and denies copyleft licenses (GPL, LGPL, AGPL).
+
+- `cargo-audit` - Security vulnerability scanner
+
+  ```bash
+  cargo install cargo-audit
+  ```
+
+  Scans dependencies for known security vulnerabilities from the RustSec Advisory Database.
 
 ## Architecture
 

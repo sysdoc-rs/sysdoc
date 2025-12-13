@@ -92,11 +92,18 @@ The release binary will be at `target/release/sysdoc` (or `sysdoc.exe` on Window
 
 **Required:**
 
-- `cargo-deny` - License and security checking
+- `cargo-deny` - License and advisory checking
 
   ```bash
   cargo install cargo-deny
   cargo deny check
+  ```
+
+- `cargo-audit` - Security vulnerability scanner
+
+  ```bash
+  cargo install cargo-audit
+  cargo audit
   ```
 
 **Recommended:**
@@ -176,7 +183,7 @@ Contributions are welcome! Please ensure:
 1. Code is formatted: `cargo fmt`
 2. Clippy passes: `cargo clippy -- -D warnings`
 3. Tests pass: `cargo test`
-4. License checks pass: `cargo deny check`
+4. Security checks pass: `cargo deny check` and `cargo audit`
 
 Or simply run the build script:
 
