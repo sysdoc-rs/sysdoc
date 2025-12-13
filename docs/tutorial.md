@@ -102,29 +102,44 @@ Reference in Markdown:
 
 ### 6. Build the Document
 
-Generate a .docx file:
+Generate a .docx file (default format):
 
 ```bash
 cd src
 sysdoc build -o flight-control-sdd.docx
 ```
 
-With options:
+Or build to consolidated markdown:
 
 ```bash
 cd src
-sysdoc build \
-  --input . \
-  --output ../../deliverables/sdd-v1.0.docx \
-  --verbose
+sysdoc build --format markdown --output ../output
 ```
+
+With options:
+
+```bash
+sysdoc build src --format docx --output deliverables/sdd-v1.0.docx --verbose
+```
+
+Or from within the src directory:
+
+```bash
+cd src
+sysdoc build --output ../deliverables/sdd-v1.0.docx --verbose
+```
+
+**Output formats:**
+
+- **DOCX** - Single Word document with embedded images (default)
+- **Markdown** - Consolidated markdown file with images in a separate folder
 
 ### 7. Validate the Document
 
 Check for broken links and missing files:
 
 ```bash
-sysdoc validate --check-links --check-images --check-tables
+sysdoc validate src --check-links --check-images --check-tables
 ```
 
 ## Advanced Usage
@@ -146,8 +161,7 @@ mkdir my-custom-doc
 cd my-custom-doc
 mkdir -p src/01-intro src/02-content
 echo "# Introduction" > src/01-intro/01.01_overview.md
-cd src
-sysdoc build
+sysdoc build src -o my-doc.docx
 ```
 
 **Tip:** Use section number prefixes (e.g., `01.01_overview.md`) for better clarity when working with multiple files in your editor.

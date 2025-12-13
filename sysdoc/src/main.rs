@@ -11,7 +11,7 @@
 mod cli;
 
 use clap::Parser;
-use cli::{Cli, Commands};
+use cli::{Cli, Commands, OutputFormat};
 
 /// Main entry point for the sysdoc CLI application
 fn main() {
@@ -39,6 +39,7 @@ fn main() {
         Commands::Build {
             input,
             output,
+            format,
             watch,
             verbose,
             no_toc,
@@ -47,6 +48,15 @@ fn main() {
             println!("Building documentation...");
             println!("Input: {}", input.display());
             println!("Output: {}", output.display());
+            match format {
+                OutputFormat::Docx => println!("Format: DOCX"),
+                OutputFormat::Markdown => {
+                    println!("Format: Markdown with images folder");
+                    if no_images {
+                        println!("Warning: --no-images has no effect in Markdown format");
+                    }
+                }
+            }
             if watch {
                 println!("Watch mode enabled");
             }
@@ -56,7 +66,7 @@ fn main() {
             if no_toc {
                 println!("Skipping table of contents");
             }
-            if no_images {
+            if no_images && matches!(format, OutputFormat::Docx) {
                 println!("Skipping image embedding");
             }
             // TODO: Implement build logic

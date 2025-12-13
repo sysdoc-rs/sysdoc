@@ -1,7 +1,16 @@
 //! Command-line interface definitions for sysdoc
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
+
+/// Output format for the build command
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum OutputFormat {
+    /// Microsoft Word DOCX format
+    Docx,
+    /// Markdown with images in a separate folder
+    Markdown,
+}
 
 /// CLI structure for the sysdoc application
 #[derive(Parser)]
@@ -34,15 +43,19 @@ pub enum Commands {
         title: Option<String>,
     },
 
-    /// Build documentation to .docx format
+    /// Build documentation to .docx or markdown format
     Build {
-        /// Input directory
-        #[arg(short, long, default_value = ".")]
+        /// Input directory (defaults to current directory)
+        #[arg(value_name = "PATH", default_value = ".")]
         input: PathBuf,
 
-        /// Output .docx file path
+        /// Output file or directory path
         #[arg(short, long, default_value = "output.docx")]
         output: PathBuf,
+
+        /// Output format (docx or markdown)
+        #[arg(short, long, value_enum, default_value = "docx")]
+        format: OutputFormat,
 
         /// Watch for changes and rebuild automatically
         #[arg(short, long)]
@@ -56,15 +69,15 @@ pub enum Commands {
         #[arg(long)]
         no_toc: bool,
 
-        /// Skip image embedding
+        /// Skip image embedding (DOCX only)
         #[arg(long)]
         no_images: bool,
     },
 
     /// Validate document structure and references
     Validate {
-        /// Input directory
-        #[arg(short, long, default_value = ".")]
+        /// Input directory (defaults to current directory)
+        #[arg(value_name = "PATH", default_value = ".")]
         input: PathBuf,
 
         /// Show detailed validation results
