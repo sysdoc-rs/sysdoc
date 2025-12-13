@@ -1,0 +1,33 @@
+# Rust/Cargo
+/target/
+**/target/
+Cargo.lock
+
+# Debug and build artifacts
+**/*.rs.bk
+*.pdb
+
+# IDE and editor files
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Environment variables
+.env
+.env.local
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Generated output files
+*.docx
+**/output.docx
+examples/**/output/
+target/test-output/
