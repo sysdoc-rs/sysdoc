@@ -9,19 +9,19 @@ fn get_workspace_root() -> PathBuf {
 #[test]
 fn test_minimal_sdd_exists() {
     let workspace_root = get_workspace_root();
-    let example_path = workspace_root.join("examples/minimal-sdd");
-    assert!(example_path.exists(), "minimal-sdd example should exist");
+    let example_path = workspace_root.join("examples");
+    assert!(example_path.exists(), "examples directory should exist");
     assert!(
-        example_path.join("01-introduction/index.md").exists(),
-        "minimal-sdd should have introduction"
+        example_path.join("src/minimal-sdd/01-introduction/01.01_purpose.md").exists(),
+        "minimal-sdd should have introduction section"
     );
     assert!(
-        example_path.join("02-architecture/index.md").exists(),
-        "minimal-sdd should have architecture"
+        example_path.join("src/minimal-sdd/02-architecture/02.01_overview.md").exists(),
+        "minimal-sdd should have architecture section"
     );
     assert!(
         example_path
-            .join("02-architecture/system-diagram.drawio.svg")
+            .join("src/minimal-sdd/02-architecture/system-diagram.drawio.svg")
             .exists(),
         "minimal-sdd should have diagram"
     );
@@ -30,23 +30,23 @@ fn test_minimal_sdd_exists() {
 #[test]
 fn test_complete_sdd_exists() {
     let workspace_root = get_workspace_root();
-    let example_path = workspace_root.join("examples/complete-sdd");
-    assert!(example_path.exists(), "complete-sdd example should exist");
+    let example_path = workspace_root.join("examples");
+    assert!(example_path.exists(), "examples directory should exist");
     assert!(
         example_path
-            .join("02-architecture/tables/components.csv")
+            .join("src/complete-sdd/02-architecture/tables/components.csv")
             .exists(),
         "complete-sdd should have CSV tables"
     );
     assert!(
         example_path
-            .join("02-architecture/diagrams/system-context.drawio.svg")
+            .join("src/complete-sdd/02-architecture/diagrams/system-context.drawio.svg")
             .exists(),
         "complete-sdd should have diagrams"
     );
     assert!(
         example_path
-            .join("03-detailed-design/01-ui-component/ui-screenshot.png")
+            .join("src/complete-sdd/03-detailed-design/ui-screenshot.png")
             .exists(),
         "complete-sdd should have PNG images"
     );
@@ -55,20 +55,20 @@ fn test_complete_sdd_exists() {
 #[test]
 fn test_template_exists() {
     let workspace_root = get_workspace_root();
-    let template_path = workspace_root.join("examples/templates/DI-IPSC-81435B");
+    let template_path = workspace_root.join("examples");
     assert!(
         template_path.exists(),
-        "DI-IPSC-81435B template should exist"
+        "examples directory should exist"
     );
     assert!(
-        template_path.join("01-scope/index.md").exists(),
+        template_path.join("src/templates/DI-IPSC-81435B/01-scope/01.01_identification.md").exists(),
         "template should have scope section"
     );
     assert!(
         template_path
-            .join("03-software-design/01-system-wide-design/index.md")
+            .join("src/templates/DI-IPSC-81435B/03-software-design/03.01_system-wide-design.md")
             .exists(),
-        "template should have nested sections"
+        "template should have software design sections"
     );
 }
 

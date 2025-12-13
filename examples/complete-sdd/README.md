@@ -8,27 +8,29 @@ This is a comprehensive Software Design Description (SDD) example demonstrating 
 complete-sdd/
 ├── README.md
 ├── 01-introduction/
-│   ├── index.md
+│   ├── introduction.md
 │   └── 01-purpose/
-│       └── index.md
+│       └── purpose.md
 ├── 02-architecture/
-│   ├── index.md
+│   ├── architecture.md
 │   ├── diagrams/
 │   │   ├── system-context.drawio.svg
 │   │   └── component-diagram.drawio.svg
 │   └── tables/
 │       └── components.csv
 ├── 03-detailed-design/
-│   ├── index.md
+│   ├── detailed-design.md
 │   ├── 01-ui-component/
-│   │   ├── index.md
+│   │   ├── ui-component.md
 │   │   └── ui-screenshot.png
 │   └── 02-data-component/
-│       └── index.md
+│       └── data-component.md
 └── 04-interfaces/
-    ├── index.md
+    ├── interfaces.md
     └── api-endpoints.csv
 ```
+
+**Note:** Markdown files use descriptive names (not `index.md`) for better IDE tab clarity.
 
 ## Building
 

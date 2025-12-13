@@ -8,13 +8,15 @@ This is a minimal Software Design Description (SDD) example demonstrating basic 
 minimal-sdd/
 ├── README.md              (this file)
 ├── 01-introduction/
-│   └── index.md
+│   └── introduction.md
 ├── 02-architecture/
-│   ├── index.md
+│   ├── architecture.md
 │   └── system-diagram.drawio.svg
 └── 03-design/
-    └── index.md
+    └── design.md
 ```
+
+**Note:** Markdown files use descriptive names (not `index.md`) for better IDE tab clarity.
 
 ## Building
 

@@ -32,16 +32,18 @@ sysdoc documents follow a simple convention:
 ```
 my-document/
 ├── 01-section/
-│   ├── index.md           # Section content
+│   ├── section.md         # Section content (descriptive filename)
 │   ├── diagrams/
 │   │   └── *.drawio.svg   # DrawIO diagrams
 │   ├── tables/
 │   │   └── *.csv          # CSV tables
 │   └── 01-subsection/
-│       └── index.md
+│       └── subsection.md  # Subsection content
 └── 02-next-section/
-    └── index.md
+    └── next-section.md
 ```
+
+**Naming Convention:** Use descriptive filenames (not `index.md`) for better clarity in your IDE tabs.
 
 ## Features
 

@@ -27,26 +27,31 @@ This creates a directory structure based on the DI-IPSC-81435B standard.
 ```bash
 my-sdd/
 ├── 01-scope/
-│   └── index.md
+│   └── scope.md
 ├── 02-referenced-documents/
-│   └── index.md
+│   └── referenced-documents.md
 ├── 03-software-design/
-│   ├── index.md
+│   ├── software-design.md
 │   ├── 01-system-wide-design/
+│   │   └── system-wide-design.md
 │   ├── 02-architectural-design/
+│   │   └── architectural-design.md
 │   └── 03-detailed-design/
+│       └── detailed-design.md
 ├── 04-requirements-traceability/
-│   └── index.md
+│   └── requirements-traceability.md
 └── 05-notes/
-    └── index.md
+    └── notes.md
 ```
+
+**Note:** Files use descriptive names (not `index.md`) so they're easily identifiable in your IDE tabs.
 
 ### 3. Edit Content
 
 Edit the Markdown files to add your content:
 
 ```bash
-code 01-scope/index.md
+code 01-scope/scope.md
 ```
 
 Add content following Markdown syntax:
@@ -137,9 +142,11 @@ You're not limited to templates. Create your own structure:
 mkdir my-custom-doc
 cd my-custom-doc
 mkdir -p 01-intro 02-content/subsection-a
-echo "# Introduction" > 01-intro/index.md
+echo "# Introduction" > 01-intro/introduction.md
 sysdoc build
 ```
+
+**Tip:** Use descriptive filenames instead of `index.md` for better clarity when working with multiple files in your editor.
 
 ### Nested Sections
 
@@ -147,11 +154,11 @@ sysdoc automatically adjusts heading levels based on folder depth:
 
 ```
 01-section/
-  index.md              # H1: Section
+  section.md            # H1: Section
   01-subsection/
-    index.md            # H2: Subsection
+    subsection.md       # H2: Subsection
     01-sub-subsection/
-      index.md          # H3: Sub-subsection
+      sub-subsection.md # H3: Sub-subsection
 ```
 
 ### Version Control

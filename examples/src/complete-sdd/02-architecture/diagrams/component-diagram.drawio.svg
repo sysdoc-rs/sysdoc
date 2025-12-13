@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="600px" height="400px" viewBox="-0.5 -0.5 600 400">
+  <g>
+    <rect x="50" y="50" width="150" height="80" fill="#dae8fc" stroke="#6c8ebf"/>
+    <text x="125" y="95" text-anchor="middle" font-size="14px">User Interface</text>
+    <rect x="225" y="150" width="150" height="80" fill="#d5e8d4" stroke="#82b366"/>
+    <text x="300" y="195" text-anchor="middle" font-size="14px">API Gateway</text>
+    <rect x="400" y="50" width="150" height="80" fill="#ffe6cc" stroke="#d79b00"/>
+    <text x="475" y="95" text-anchor="middle" font-size="14px">Business Logic</text>
+    <rect x="400" y="250" width="150" height="80" fill="#f8cecc" stroke="#b85450"/>
+    <text x="475" y="295" text-anchor="middle" font-size="14px">Database</text>
+    <path d="M 200 90 L 225 190" stroke="#000" stroke-width="2" fill="none"/>
+    <path d="M 375 190 L 400 90" stroke="#000" stroke-width="2" fill="none"/>
+    <path d="M 475 130 L 475 250" stroke="#000" stroke-width="2" fill="none"/>
+  </g>
+</svg>
