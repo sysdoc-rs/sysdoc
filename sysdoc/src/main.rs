@@ -3,6 +3,7 @@
 //! A CLI tool for creating and building Systems Engineering documents
 //! using Markdown, DrawIO, and CSV files.
 
+#![deny(unsafe_code)]
 #![cfg_attr(
     all(not(debug_assertions), not(test)),
     deny(clippy::all, missing_docs, unused_crate_dependencies)
