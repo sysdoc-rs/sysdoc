@@ -33,7 +33,9 @@ fn test_complete_sdd_exists() {
     let example_path = workspace_root.join("examples/complete-sdd");
     assert!(example_path.exists(), "complete-sdd example should exist");
     assert!(
-        example_path.join("02-architecture/tables/components.csv").exists(),
+        example_path
+            .join("02-architecture/tables/components.csv")
+            .exists(),
         "complete-sdd should have CSV tables"
     );
     assert!(
@@ -54,13 +56,18 @@ fn test_complete_sdd_exists() {
 fn test_template_exists() {
     let workspace_root = get_workspace_root();
     let template_path = workspace_root.join("examples/templates/DI-IPSC-81435B");
-    assert!(template_path.exists(), "DI-IPSC-81435B template should exist");
+    assert!(
+        template_path.exists(),
+        "DI-IPSC-81435B template should exist"
+    );
     assert!(
         template_path.join("01-scope/index.md").exists(),
         "template should have scope section"
     );
     assert!(
-        template_path.join("03-software-design/01-system-wide-design/index.md").exists(),
+        template_path
+            .join("03-software-design/01-system-wide-design/index.md")
+            .exists(),
         "template should have nested sections"
     );
 }

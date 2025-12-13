@@ -1,8 +1,19 @@
+//! sysdoc - Systems Engineering documentation tool
+//!
+//! A CLI tool for creating and building Systems Engineering documents
+//! using Markdown, DrawIO, and CSV files.
+
+#![cfg_attr(
+    all(not(debug_assertions), not(test)),
+    deny(clippy::all, missing_docs, unused_crate_dependencies)
+)]
+
 mod cli;
 
 use clap::Parser;
 use cli::{Cli, Commands};
 
+/// Main entry point for the sysdoc CLI application
 fn main() {
     let cli = Cli::parse();
 

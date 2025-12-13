@@ -1,15 +1,20 @@
+//! Command-line interface definitions for sysdoc
+
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+/// CLI structure for the sysdoc application
 #[derive(Parser)]
 #[command(name = "sysdoc")]
 #[command(version)]
 #[command(about = "Systems Engineering documentation tool", long_about = None)]
 pub struct Cli {
+    /// The subcommand to execute
     #[command(subcommand)]
     pub command: Commands,
 }
 
+/// Available subcommands for sysdoc
 #[derive(Subcommand)]
 pub enum Commands {
     /// Initialize a new document from a DID template
