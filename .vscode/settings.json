@@ -11,6 +11,8 @@
     "editor.formatOnSave": true
   },
   "cSpell.words": [
-    "IPSC"
+    "clippy",
+    "IPSC",
+    "sysdoc"
   ]
 }
