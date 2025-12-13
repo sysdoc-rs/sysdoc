@@ -12,11 +12,15 @@ fn test_minimal_sdd_exists() {
     let example_path = workspace_root.join("examples");
     assert!(example_path.exists(), "examples directory should exist");
     assert!(
-        example_path.join("src/minimal-sdd/01-introduction/01.01_purpose.md").exists(),
+        example_path
+            .join("src/minimal-sdd/01-introduction/01.01_purpose.md")
+            .exists(),
         "minimal-sdd should have introduction section"
     );
     assert!(
-        example_path.join("src/minimal-sdd/02-architecture/02.01_overview.md").exists(),
+        example_path
+            .join("src/minimal-sdd/02-architecture/02.01_overview.md")
+            .exists(),
         "minimal-sdd should have architecture section"
     );
     assert!(
@@ -56,12 +60,11 @@ fn test_complete_sdd_exists() {
 fn test_template_exists() {
     let workspace_root = get_workspace_root();
     let template_path = workspace_root.join("examples");
+    assert!(template_path.exists(), "examples directory should exist");
     assert!(
-        template_path.exists(),
-        "examples directory should exist"
-    );
-    assert!(
-        template_path.join("src/templates/DI-IPSC-81435B/01-scope/01.01_identification.md").exists(),
+        template_path
+            .join("src/templates/DI-IPSC-81435B/01-scope/01.01_identification.md")
+            .exists(),
         "template should have scope section"
     );
     assert!(
