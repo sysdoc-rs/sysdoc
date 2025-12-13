@@ -154,10 +154,12 @@ See the [`examples/`](examples/) directory for complete examples:
 - **complete-sdd** - Comprehensive example with all features
 - **templates/** - Document templates for `sysdoc init`
 
+All examples use section number prefixes (e.g., `01.01_purpose.md`) and are organized under `src/` directories.
+
 Build an example:
 
 ```bash
-cd examples/minimal-sdd
+cd examples/minimal-sdd/src
 sysdoc build -o minimal-sdd.docx
 ```
 

@@ -1,8 +1,0 @@
-Endpoint,Method,Description,Request,Response
-/api/users,GET,List all users,Query params: page/limit,Array of user objects
-/api/users/{id},GET,Get user by ID,Path param: id,User object
-/api/users,POST,Create new user,User object in body,Created user object
-/api/users/{id},PUT,Update user,User object in body,Updated user object
-/api/users/{id},DELETE,Delete user,Path param: id,204 No Content
-/api/projects,GET,List all projects,Query params: page/limit,Array of project objects
-/api/projects/{id},GET,Get project by ID,Path param: id,Project object

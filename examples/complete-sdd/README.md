@@ -7,42 +7,47 @@ This is a comprehensive Software Design Description (SDD) example demonstrating 
 ```
 complete-sdd/
 ├── README.md
-├── 01-introduction/
-│   ├── introduction.md
-│   └── 01-purpose/
-│       └── purpose.md
-├── 02-architecture/
-│   ├── architecture.md
-│   ├── diagrams/
-│   │   ├── system-context.drawio.svg
-│   │   └── component-diagram.drawio.svg
-│   └── tables/
-│       └── components.csv
-├── 03-detailed-design/
-│   ├── detailed-design.md
-│   ├── 01-ui-component/
-│   │   ├── ui-component.md
-│   │   └── ui-screenshot.png
-│   └── 02-data-component/
-│       └── data-component.md
-└── 04-interfaces/
-    ├── interfaces.md
-    └── api-endpoints.csv
+└── src/
+    ├── 01-introduction/
+    │   ├── 01.00_introduction.md
+    │   └── 01.01_purpose.md
+    ├── 02-architecture/
+    │   ├── 02.00_architecture.md
+    │   ├── 02.01_system-context.md
+    │   ├── 02.02_component-architecture.md
+    │   ├── 02.03_component-summary.md
+    │   ├── diagrams/
+    │   │   ├── system-context.drawio.svg
+    │   │   └── component-diagram.drawio.svg
+    │   └── tables/
+    │       └── components.csv
+    ├── 03-detailed-design/
+    │   ├── 03.00_detailed-design.md
+    │   ├── 03.01_ui-component.md
+    │   ├── 03.02_data-component.md
+    │   └── ui-screenshot.png
+    └── 04-interfaces/
+        ├── 04.00_interfaces.md
+        ├── 04.01_api-endpoints.md
+        └── api-endpoints.csv
 ```
 
-**Note:** Markdown files use descriptive names (not `index.md`) for better IDE tab clarity.
+**Note:** All markdown files use section number prefixes (e.g., `01.00_introduction.md`, `02.01_system-context.md`) for better organization and IDE tab clarity.
 
 ## Building
 
 ```bash
+cd src
 sysdoc build -o complete-sdd.docx
 ```
 
 ## Features Demonstrated
 
 - Nested folder structure (multi-level sections)
+- Section number prefixes in filenames (XX.YY_name.md)
 - Auto-nested heading depth
 - Multiple DrawIO SVG diagrams
 - PNG images
 - CSV tables
 - Complex document organization
+- Source files organized under src/ directory
