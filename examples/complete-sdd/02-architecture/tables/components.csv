@@ -1,0 +1,7 @@
+Component,Description,Technology,Status
+User Interface,Web-based user interface,React/TypeScript,Implemented
+API Gateway,RESTful API gateway,Node.js/Express,Implemented
+Business Logic,Core business logic layer,Java/Spring Boot,In Development
+Data Access Layer,Database abstraction layer,Hibernate,Implemented
+Database,Persistent data storage,PostgreSQL,Implemented
+Cache,Performance caching layer,Redis,Planned

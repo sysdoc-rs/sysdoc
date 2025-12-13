@@ -25,3 +25,9 @@ CLAUDE.local.md
 # OS files
 Thumbs.db
 desktop.ini
+
+# Generated output files
+*.docx
+**/output.docx
+examples/**/output/
+target/test-output/
