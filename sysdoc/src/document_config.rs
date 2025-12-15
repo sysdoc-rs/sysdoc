@@ -42,20 +42,19 @@ pub struct Person {
 impl DocumentConfig {
     /// Load configuration from a sysdoc.toml file
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, DocumentConfigError> {
-        let content = fs::read_to_string(&path).map_err(|e| DocumentConfigError::IoError(e))?;
+        let content = fs::read_to_string(&path).map_err(DocumentConfigError::IoError)?;
 
         let config: DocumentConfig =
-            toml::from_str(&content).map_err(|e| DocumentConfigError::ParseError(e))?;
+            toml::from_str(&content).map_err(DocumentConfigError::ParseError)?;
 
         Ok(config)
     }
 
     /// Save configuration to a sysdoc.toml file
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), DocumentConfigError> {
-        let content =
-            toml::to_string_pretty(self).map_err(|e| DocumentConfigError::SerializeError(e))?;
+        let content = toml::to_string_pretty(self).map_err(DocumentConfigError::SerializeError)?;
 
-        fs::write(&path, content).map_err(|e| DocumentConfigError::IoError(e))?;
+        fs::write(&path, content).map_err(DocumentConfigError::IoError)?;
 
         Ok(())
     }
@@ -63,6 +62,7 @@ impl DocumentConfig {
 
 /// Errors that can occur when loading or saving document configuration
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum DocumentConfigError {
     /// IO error when reading or writing file
     IoError(std::io::Error),
