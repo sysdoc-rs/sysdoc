@@ -11,6 +11,7 @@ mod cli;
 mod document_config;
 mod document_model;
 mod document_section;
+mod template_config;
 mod walker;
 
 use clap::Parser;
