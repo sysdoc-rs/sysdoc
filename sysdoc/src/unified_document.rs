@@ -105,11 +105,7 @@ pub struct DocumentSection {
 impl DocumentSection {
     /// Get the word count for this section and all subsections
     pub fn word_count(&self) -> usize {
-        let own_count: usize = self
-            .content
-            .iter()
-            .map(|block| block.word_count())
-            .sum();
+        let own_count: usize = self.content.iter().map(|block| block.word_count()).sum();
         let subsection_count: usize = self.subsections.iter().map(|s| s.word_count()).sum();
         own_count + subsection_count
     }
@@ -177,9 +173,7 @@ impl ContentBlock {
     pub fn word_count(&self) -> usize {
         match self {
             ContentBlock::Paragraph(inlines) => inlines.iter().map(|i| i.word_count()).sum(),
-            ContentBlock::Heading { content, .. } => {
-                content.iter().map(|i| i.word_count()).sum()
-            }
+            ContentBlock::Heading { content, .. } => content.iter().map(|i| i.word_count()).sum(),
             ContentBlock::BlockQuote(blocks) => blocks.iter().map(|b| b.word_count()).sum(),
             ContentBlock::CodeBlock { code, .. } => code.split_whitespace().count(),
             ContentBlock::List { items, .. } => items.iter().map(|i| i.word_count()).sum(),
@@ -195,10 +189,8 @@ impl ContentBlock {
                 header_count + row_count
             }
             ContentBlock::CsvTable { headers, rows, .. } => {
-                let header_count: usize = headers
-                    .iter()
-                    .map(|h| h.split_whitespace().count())
-                    .sum();
+                let header_count: usize =
+                    headers.iter().map(|h| h.split_whitespace().count()).sum();
                 let row_count: usize = rows
                     .iter()
                     .flat_map(|r| r.iter().map(|c| c.split_whitespace().count()))
@@ -270,9 +262,7 @@ impl InlineContent {
             InlineContent::Code(code) => code.split_whitespace().count(),
             InlineContent::Emphasis(content)
             | InlineContent::Strong(content)
-            | InlineContent::Strikethrough(content) => {
-                content.iter().map(|i| i.word_count()).sum()
-            }
+            | InlineContent::Strikethrough(content) => content.iter().map(|i| i.word_count()).sum(),
             InlineContent::Link { content, .. } => content.iter().map(|i| i.word_count()).sum(),
             InlineContent::Image { alt_text, .. } => alt_text.split_whitespace().count(),
             InlineContent::SoftBreak

@@ -23,9 +23,9 @@ mod templates;
 mod walker;
 
 // New three-stage pipeline modules
+mod pipeline;
 mod source_model;
 mod unified_document;
-mod pipeline;
 
 use clap::Parser;
 use cli::{Cli, Commands, OutputFormat};

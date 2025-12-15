@@ -402,9 +402,7 @@ impl MarkdownTag {
                         pulldown_cmark::Alignment::Right => Alignment::Right,
                     })
                     .collect();
-                MarkdownTag::Table {
-                    alignments: aligns,
-                }
+                MarkdownTag::Table { alignments: aligns }
             }
             pulldown_cmark::Tag::TableHead => MarkdownTag::TableHead,
             pulldown_cmark::Tag::TableRow => MarkdownTag::TableRow,

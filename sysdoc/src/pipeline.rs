@@ -29,8 +29,7 @@ pub fn parse_sources(root: &Path) -> Result<SourceModel, ParseError> {
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| {
-            e.path().is_file()
-                && e.path().extension().and_then(|s| s.to_str()) == Some("md")
+            e.path().is_file() && e.path().extension().and_then(|s| s.to_str()) == Some("md")
         })
         .map(|e| e.path().to_path_buf())
         .collect();
@@ -105,12 +104,9 @@ pub fn parse_sources(root: &Path) -> Result<SourceModel, ParseError> {
 }
 
 /// Parse a single markdown file
-fn parse_markdown_file(
-    path: &Path,
-    root: &Path,
-) -> Result<MarkdownSource, ParseError> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| ParseError::IoError(path.to_path_buf(), e))?;
+fn parse_markdown_file(path: &Path, root: &Path) -> Result<MarkdownSource, ParseError> {
+    let content =
+        std::fs::read_to_string(path).map_err(|e| ParseError::IoError(path.to_path_buf(), e))?;
 
     // Extract filename without extension
     let filename = path
@@ -124,10 +120,7 @@ fn parse_markdown_file(
     let section_number = SectionNumber::parse(number_str)
         .ok_or_else(|| ParseError::InvalidSectionNumber(path.to_path_buf()))?;
 
-    let relative_path = path
-        .strip_prefix(root)
-        .unwrap_or(path)
-        .to_path_buf();
+    let relative_path = path.strip_prefix(root).unwrap_or(path).to_path_buf();
 
     let mut source = MarkdownSource {
         path: relative_path,
@@ -264,10 +257,7 @@ pub mod export {
     use std::path::Path;
 
     /// Export to aggregated markdown file
-    pub fn to_markdown(
-        _doc: &UnifiedDocument,
-        _output_path: &Path,
-    ) -> Result<(), ExportError> {
+    pub fn to_markdown(_doc: &UnifiedDocument, _output_path: &Path) -> Result<(), ExportError> {
         // TODO: Implement markdown export
         Err(ExportError::NotImplemented("Markdown export".to_string()))
     }
