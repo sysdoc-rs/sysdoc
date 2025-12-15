@@ -5,7 +5,13 @@
 
 #![deny(unsafe_code)]
 #![cfg_attr(all(not(debug_assertions), not(test)), deny(clippy::all))]
+#![cfg_attr(all(not(debug_assertions), not(test)), deny(clippy::pedantic))]
 #![cfg_attr(all(not(debug_assertions), not(test)), deny(missing_docs))]
+// Allow some pedantic lints that are too strict for this project
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 
 mod cli;
 mod document_config;
