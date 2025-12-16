@@ -28,6 +28,12 @@ pub fn get_all_templates() -> Vec<TemplateInfo> {
             content: include_str!("templates/sdd-standard-v1.toml"),
         },
         TemplateInfo {
+            id: "srs-standard-v1".to_string(),
+            doc_type: "SRS".to_string(),
+            spec: "DI-IPSC-81433A".to_string(),
+            content: include_str!("templates/srs-standard-v1.toml"),
+        },
+        TemplateInfo {
             id: "ssdd-standard-v1".to_string(),
             doc_type: "SSDD".to_string(),
             spec: "DI-IPSC-81437A".to_string(),
@@ -36,7 +42,7 @@ pub fn get_all_templates() -> Vec<TemplateInfo> {
         TemplateInfo {
             id: "sss-standard-v1".to_string(),
             doc_type: "SSS".to_string(),
-            spec: "DI-IPSC-81433C".to_string(),
+            spec: "DI-IPSC-81431A".to_string(),
             content: include_str!("templates/sss-standard-v1.toml"),
         },
     ]
@@ -74,12 +80,13 @@ mod tests {
     #[test]
     fn test_all_templates_load() {
         let templates = get_all_templates();
-        assert_eq!(templates.len(), 3);
+        assert_eq!(templates.len(), 4);
     }
 
     #[test]
     fn test_get_template_by_id() {
         assert!(get_template("sdd-standard-v1").is_some());
+        assert!(get_template("srs-standard-v1").is_some());
         assert!(get_template("ssdd-standard-v1").is_some());
         assert!(get_template("sss-standard-v1").is_some());
     }
@@ -88,6 +95,8 @@ mod tests {
     fn test_get_template_by_alias() {
         assert!(get_template("SDD").is_some());
         assert!(get_template("sdd").is_some());
+        assert!(get_template("SRS").is_some());
+        assert!(get_template("srs").is_some());
         assert!(get_template("SSDD").is_some());
         assert!(get_template("SSS").is_some());
     }
@@ -95,8 +104,9 @@ mod tests {
     #[test]
     fn test_get_template_by_spec() {
         assert!(get_template("DI-IPSC-81435B").is_some());
+        assert!(get_template("DI-IPSC-81433A").is_some());
         assert!(get_template("DI-IPSC-81437A").is_some());
-        assert!(get_template("DI-IPSC-81433C").is_some());
+        assert!(get_template("DI-IPSC-81431A").is_some());
     }
 
     #[test]
