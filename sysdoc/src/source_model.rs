@@ -267,6 +267,7 @@ impl MarkdownSource {
 #[derive(Debug, Clone)]
 pub struct MarkdownSection {
     /// Heading level (1 = h1, 2 = h2, etc.)
+    /// The level indicates the nesting depth of the section within the source file from which it was parsed.
     pub heading_level: usize,
 
     /// Text content of the heading
