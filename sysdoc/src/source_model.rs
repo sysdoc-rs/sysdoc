@@ -12,12 +12,16 @@ use std::path::PathBuf;
 pub struct SourceModel {
     /// Root directory of the document
     pub root: PathBuf,
+
     /// Document configuration from sysdoc.toml
     pub config: DocumentConfig,
+
     /// All markdown source files, ordered by discovery (not sorted yet)
     pub markdown_files: Vec<MarkdownSource>,
+
     /// All image files referenced in the markdown
     pub image_files: Vec<ImageSource>,
+
     /// All CSV table files referenced in the markdown
     pub table_files: Vec<TableSource>,
 }
@@ -114,14 +118,19 @@ impl SourceModel {
 pub struct MarkdownSource {
     /// Path to the source file (relative to document root)
     pub path: PathBuf,
+
     /// Absolute path to the source file
     pub absolute_path: PathBuf,
+
     /// Section number parsed from filename (e.g., [1, 1] from "01.01_purpose.md")
     pub section_number: SectionNumber,
+
     /// Title derived from filename (e.g., "Purpose" from "01.01_purpose.md")
     pub title: String,
+
     /// Raw markdown content
     pub raw_content: String,
+
     /// Parsed sections (split by headings)
     pub sections: Vec<MarkdownSection>,
 }
@@ -259,12 +268,16 @@ impl MarkdownSource {
 pub struct MarkdownSection {
     /// Heading level (1 = h1, 2 = h2, etc.)
     pub heading_level: usize,
+
     /// Text content of the heading
     pub heading_text: String,
+
     /// Parsed markdown content as structured elements
     pub content: Vec<MarkdownContent>,
+
     /// Images referenced in this section
     pub image_refs: Vec<ImageReference>,
+
     /// CSV tables referenced in this section
     pub table_refs: Vec<PathBuf>,
 }
@@ -522,6 +535,7 @@ pub enum Alignment {
 pub struct ImageReference {
     /// Path to the image file (relative to document root)
     pub path: PathBuf,
+
     /// Alt text for the image
     pub alt_text: String,
 }
@@ -531,12 +545,16 @@ pub struct ImageReference {
 pub struct ImageSource {
     /// Path to the image file (relative to document root)
     pub path: PathBuf,
+
     /// Absolute path to the image file
     pub absolute_path: PathBuf,
+
     /// Image format (png, jpg, svg, etc.)
     pub format: ImageFormat,
+
     /// Whether the image has been loaded into memory
     pub loaded: bool,
+
     /// Image data (if loaded)
     pub data: Option<Vec<u8>>,
 }
@@ -588,10 +606,13 @@ impl ImageFormat {
 pub struct TableSource {
     /// Path to the CSV file (relative to document root)
     pub path: PathBuf,
+
     /// Absolute path to the CSV file
     pub absolute_path: PathBuf,
+
     /// Whether the table has been loaded into memory
     pub loaded: bool,
+
     /// Parsed CSV data (if loaded)
     pub data: Option<Vec<Vec<String>>>,
 }
