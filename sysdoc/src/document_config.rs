@@ -27,6 +27,9 @@ pub struct DocumentConfig {
 
     /// Template used to create the document
     pub document_template: String,
+
+    /// Path to the .docx file to use as template for generated docx files
+    pub docx_template_path: Option<String>,
 }
 
 /// Person information (owner, approver, etc.)
@@ -106,6 +109,7 @@ mod tests {
             document_type: "SDD".to_string(),
             document_standard: "DI-IPSC-81435B".to_string(),
             document_template: "sdd-standard-v1".to_string(),
+            docx_template_path: Some("templates/standard.docx".to_string()),
         };
 
         // Serialize to TOML
