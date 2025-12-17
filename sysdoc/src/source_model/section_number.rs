@@ -9,7 +9,17 @@ pub struct SectionNumber {
 
 impl SectionNumber {
     /// Parse section number from filename prefix
-    /// Examples: "01.01" -> [1, 1], "02.03.01" -> [2, 3, 1]
+    ///
+    /// # Parameters
+    /// * `s` - String slice containing the section number (e.g., "01.01", "02.03.01")
+    ///
+    /// # Returns
+    /// * `Some(SectionNumber)` - Successfully parsed section number
+    /// * `None` - Failed to parse (invalid format or non-numeric parts)
+    ///
+    /// # Examples
+    /// * "01.01" -> [1, 1]
+    /// * "02.03.01" -> [2, 3, 1]
     pub fn parse(s: &str) -> Option<Self> {
         let parts: Option<Vec<u32>> = s.split('.').map(|part| part.parse::<u32>().ok()).collect();
 
@@ -17,6 +27,9 @@ impl SectionNumber {
     }
 
     /// Get the depth/nesting level (number of parts - 1)
+    ///
+    /// # Returns
+    /// * `usize` - The nesting depth (0 for top-level sections, 1 for first subsection, etc.)
     pub fn depth(&self) -> usize {
         self.parts.len().saturating_sub(1)
     }

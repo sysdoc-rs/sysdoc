@@ -21,6 +21,13 @@ use walkdir::WalkDir;
 use rayon::prelude::*;
 
 /// Stage 1: Parse all source files
+///
+/// # Parameters
+/// * `root` - Root directory of the document source containing sysdoc.toml and markdown files
+///
+/// # Returns
+/// * `Ok(SourceModel)` - Successfully parsed source model with all discovered files
+/// * `Err(ParseError)` - Error loading configuration, parsing files, or validating references
 pub fn parse_sources(root: &Path) -> Result<SourceModel, ParseError> {
     // Load document configuration
     let config_path = root.join("sysdoc.toml");
@@ -115,6 +122,14 @@ pub fn parse_sources(root: &Path) -> Result<SourceModel, ParseError> {
 }
 
 /// Parse a single markdown file
+///
+/// # Parameters
+/// * `path` - Absolute path to the markdown file to parse
+/// * `root` - Root directory of the document (used for calculating relative paths)
+///
+/// # Returns
+/// * `Ok(MarkdownSource)` - Successfully parsed markdown source with content and metadata
+/// * `Err(ParseError)` - Error reading file or parsing filename/section number
 fn parse_markdown_file(path: &Path, root: &Path) -> Result<MarkdownSource, ParseError> {
     let content =
         std::fs::read_to_string(path).map_err(|e| ParseError::IoError(path.to_path_buf(), e))?;
@@ -149,6 +164,14 @@ fn parse_markdown_file(path: &Path, root: &Path) -> Result<MarkdownSource, Parse
 }
 
 /// Parse filename into section number and title
+///
+/// # Parameters
+/// * `filename` - Filename without extension (e.g., "01.01_purpose")
+/// * `path` - Full path to the file (used for error reporting)
+///
+/// # Returns
+/// * `Ok((number_str, title))` - Successfully parsed section number string and title
+/// * `Err(ParseError)` - Invalid filename format (must be "XX.YY_title")
 fn parse_filename<'a>(filename: &'a str, path: &Path) -> Result<(&'a str, String), ParseError> {
     let parts: Vec<&str> = filename.splitn(2, '_').collect();
 
@@ -177,6 +200,13 @@ fn parse_filename<'a>(filename: &'a str, path: &Path) -> Result<(&'a str, String
 }
 
 /// Stage 2: Transform source model into unified document
+///
+/// # Parameters
+/// * `source` - Parsed source model containing all markdown, image, and table files
+///
+/// # Returns
+/// * `Ok(UnifiedDocument)` - Successfully transformed unified document ready for export
+/// * `Err(TransformError)` - Error building document structure
 pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError> {
     let metadata = DocumentMetadata {
         document_id: source.config.document_id.clone(),
@@ -224,6 +254,13 @@ pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError>
 }
 
 /// Build hierarchical section structure from flat list
+///
+/// # Parameters
+/// * `files` - Flat list of markdown source files, assumed to be sorted by section number
+///
+/// # Returns
+/// * `Ok(Vec<DocumentSection>)` - Hierarchical vector of document sections
+/// * `Err(TransformError)` - Error building section structure
 fn build_section_hierarchy(
     files: &[MarkdownSource],
 ) -> Result<Vec<DocumentSection>, TransformError> {
@@ -265,12 +302,28 @@ pub mod export {
     use std::path::Path;
 
     /// Export to aggregated markdown file
+    ///
+    /// # Parameters
+    /// * `_doc` - The unified document to export
+    /// * `_output_path` - Path where the aggregated markdown file will be written
+    ///
+    /// # Returns
+    /// * `Ok(())` - Successfully exported to markdown
+    /// * `Err(ExportError)` - Error during export (currently not implemented)
     pub fn to_markdown(_doc: &UnifiedDocument, _output_path: &Path) -> Result<(), ExportError> {
         // TODO: Implement markdown export
         Err(ExportError::NotImplemented("Markdown export".to_string()))
     }
 
     /// Export to Microsoft Word (.docx)
+    ///
+    /// # Parameters
+    /// * `_doc` - The unified document to export
+    /// * `_output_path` - Path where the .docx file will be written
+    ///
+    /// # Returns
+    /// * `Ok(())` - Successfully exported to DOCX format
+    /// * `Err(ExportError)` - Error during export (currently not implemented)
     pub fn to_docx(_doc: &UnifiedDocument, _output_path: &Path) -> Result<(), ExportError> {
         // TODO: Implement docx export
         Err(ExportError::NotImplemented("DOCX export".to_string()))

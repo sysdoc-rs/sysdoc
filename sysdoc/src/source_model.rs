@@ -47,6 +47,13 @@ pub struct SourceModel {
 
 impl SourceModel {
     /// Create a new empty source model
+    ///
+    /// # Parameters
+    /// * `root` - Root directory path of the document
+    /// * `config` - Document configuration loaded from sysdoc.toml
+    ///
+    /// # Returns
+    /// * `SourceModel` - A new empty source model with no files
     pub fn new(root: PathBuf, config: DocumentConfig) -> Self {
         Self {
             root,
@@ -58,6 +65,10 @@ impl SourceModel {
     }
 
     /// Validate that all referenced resources exist
+    ///
+    /// # Returns
+    /// * `Ok(())` - All referenced images and tables exist
+    /// * `Err(ValidationError)` - One or more referenced resources are missing
     pub fn validate(&self) -> Result<(), ValidationError> {
         let image_errors = self.validate_image_references();
         let table_errors = self.validate_table_references();

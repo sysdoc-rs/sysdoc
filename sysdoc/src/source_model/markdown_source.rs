@@ -28,6 +28,9 @@ pub struct MarkdownSource {
 
 impl MarkdownSource {
     /// Parse the markdown content into sections
+    ///
+    /// Parses the raw markdown content and populates the sections field
+    /// with structured markdown sections delimited by headings
     pub fn parse(&mut self) {
         let (sections, _table_refs) = super::parser::MarkdownParser::parse(&self.raw_content);
 

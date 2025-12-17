@@ -20,6 +20,10 @@ pub struct TableSource {
 
 impl TableSource {
     /// Load and parse the CSV data
+    ///
+    /// # Returns
+    /// * `Ok(())` - Successfully loaded and parsed CSV data into memory
+    /// * `Err(csv::Error)` - Error reading or parsing the CSV file
     pub fn load(&mut self) -> Result<(), csv::Error> {
         let mut reader = csv::Reader::from_path(&self.absolute_path)?;
         let mut data = Vec::new();

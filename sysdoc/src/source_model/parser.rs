@@ -75,6 +75,9 @@ struct SectionBuilder {
 
 impl MarkdownParser {
     /// Create a new parser
+    ///
+    /// # Returns
+    /// * `MarkdownParser` - A new parser with empty state
     pub fn new() -> Self {
         Self {
             formatting: TextFormatting::new(),
@@ -90,6 +93,12 @@ impl MarkdownParser {
     }
 
     /// Parse markdown content into sections
+    ///
+    /// # Parameters
+    /// * `content` - Raw markdown content to parse
+    ///
+    /// # Returns
+    /// * `(Vec<MarkdownSection>, Vec<PathBuf>)` - Tuple of parsed sections and CSV table references
     pub fn parse(content: &str) -> (Vec<MarkdownSection>, Vec<PathBuf>) {
         let mut parser = Self::new();
         let md_parser = pulldown_cmark::Parser::new(content);

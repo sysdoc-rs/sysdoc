@@ -36,6 +36,12 @@ pub struct TextRun {
 
 impl TextRun {
     /// Create a new plain text run
+    ///
+    /// # Parameters
+    /// * `text` - The text content
+    ///
+    /// # Returns
+    /// * `TextRun` - A new text run with no formatting applied
     pub fn new(text: String) -> Self {
         Self {
             text,
@@ -51,6 +57,13 @@ impl TextRun {
     }
 
     /// Create a new text run with the specified formatting
+    ///
+    /// # Parameters
+    /// * `text` - The text content
+    /// * `formatting` - Formatting state to apply to the text run
+    ///
+    /// # Returns
+    /// * `TextRun` - A new text run with the specified formatting applied
     pub fn with_formatting(text: String, formatting: &TextFormatting) -> Self {
         Self {
             text,
@@ -66,6 +79,9 @@ impl TextRun {
     }
 
     /// Check if this text run has any formatting applied
+    ///
+    /// # Returns
+    /// * `bool` - True if any formatting is applied, false otherwise
     pub fn has_formatting(&self) -> bool {
         self.bold
             || self.italic
@@ -110,11 +126,17 @@ pub struct TextFormatting {
 
 impl TextFormatting {
     /// Create a new empty formatting state
+    ///
+    /// # Returns
+    /// * `TextFormatting` - A new formatting state with all formatting flags set to false
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Check if any formatting is active
+    ///
+    /// # Returns
+    /// * `bool` - True if any formatting is active, false otherwise
     pub fn has_formatting(&self) -> bool {
         self.bold
             || self.italic

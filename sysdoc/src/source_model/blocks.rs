@@ -66,6 +66,9 @@ pub struct ListItem {
 
 impl ListItem {
     /// Create a new list item
+    ///
+    /// # Returns
+    /// * `ListItem` - A new empty list item with no content
     pub fn new() -> Self {
         Self {
             task_list: None,
@@ -74,6 +77,12 @@ impl ListItem {
     }
 
     /// Create a new list item with a single paragraph
+    ///
+    /// # Parameters
+    /// * `runs` - Text runs to include in the paragraph
+    ///
+    /// # Returns
+    /// * `ListItem` - A new list item containing a single paragraph block
     pub fn with_paragraph(runs: Vec<TextRun>) -> Self {
         Self {
             task_list: None,

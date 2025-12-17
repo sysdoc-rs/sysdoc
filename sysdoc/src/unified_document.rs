@@ -31,6 +31,13 @@ pub struct UnifiedDocument {
 
 impl UnifiedDocument {
     /// Create a new empty unified document
+    ///
+    /// # Parameters
+    /// * `metadata` - Document metadata including title, owner, approver, etc.
+    /// * `root` - Root directory path of the document source
+    ///
+    /// # Returns
+    /// * `UnifiedDocument` - A new empty unified document with no sections, images, or tables
     pub fn new(metadata: DocumentMetadata, root: PathBuf) -> Self {
         Self {
             metadata,
@@ -42,16 +49,25 @@ impl UnifiedDocument {
     }
 
     /// Get the total word count across all sections
+    ///
+    /// # Returns
+    /// * `usize` - Total word count including all sections and subsections
     pub fn word_count(&self) -> usize {
         self.sections.iter().map(|s| s.word_count()).sum()
     }
 
     /// Get the total number of images
+    ///
+    /// # Returns
+    /// * `usize` - Total number of images in the document
     pub fn image_count(&self) -> usize {
         self.images.len()
     }
 
     /// Get the total number of tables
+    ///
+    /// # Returns
+    /// * `usize` - Total number of tables in the document
     pub fn table_count(&self) -> usize {
         self.tables.len()
     }
@@ -109,6 +125,9 @@ pub struct DocumentSection {
 
 impl DocumentSection {
     /// Get the word count for this section and all subsections
+    ///
+    /// # Returns
+    /// * `usize` - Total word count for this section and all nested subsections
     pub fn word_count(&self) -> usize {
         let own_count: usize = self.content.iter().map(|block| block.word_count()).sum();
         let subsection_count: usize = self.subsections.iter().map(|s| s.word_count()).sum();
@@ -116,6 +135,9 @@ impl DocumentSection {
     }
 
     /// Flatten the section hierarchy into a linear list
+    ///
+    /// # Returns
+    /// * `Vec<&DocumentSection>` - Linear vector of section references in depth-first order
     pub fn flatten(&self) -> Vec<&DocumentSection> {
         let mut result = vec![self];
         for subsection in &self.subsections {
@@ -175,6 +197,9 @@ pub enum ContentBlock {
 
 impl ContentBlock {
     /// Get the word count for this content block
+    ///
+    /// # Returns
+    /// * `usize` - Word count for the content block (0 for rules and HTML)
     pub fn word_count(&self) -> usize {
         match self {
             ContentBlock::Paragraph(inlines) => inlines.iter().map(|i| i.word_count()).sum(),
@@ -219,6 +244,9 @@ pub struct ListItem {
 
 impl ListItem {
     /// Get the word count for this list item
+    ///
+    /// # Returns
+    /// * `usize` - Word count for all content blocks in this list item
     pub fn word_count(&self) -> usize {
         self.content.iter().map(|b| b.word_count()).sum()
     }
@@ -261,6 +289,9 @@ pub enum InlineContent {
 
 impl InlineContent {
     /// Get the word count for this inline content
+    ///
+    /// # Returns
+    /// * `usize` - Word count (0 for breaks, footnotes, and HTML)
     pub fn word_count(&self) -> usize {
         match self {
             InlineContent::Text(text) => text.split_whitespace().count(),
@@ -289,6 +320,13 @@ pub struct DocumentBuilder {
 
 impl DocumentBuilder {
     /// Create a new document builder
+    ///
+    /// # Parameters
+    /// * `metadata` - Document metadata including title, owner, approver, etc.
+    /// * `root` - Root directory path of the document source
+    ///
+    /// # Returns
+    /// * `DocumentBuilder` - A new builder with empty sections, images, and tables
     pub fn new(metadata: DocumentMetadata, root: PathBuf) -> Self {
         Self {
             metadata,
@@ -300,21 +338,33 @@ impl DocumentBuilder {
     }
 
     /// Add a section to the document
+    ///
+    /// # Parameters
+    /// * `section` - Document section to add
     pub fn add_section(&mut self, section: DocumentSection) {
         self.sections.push(section);
     }
 
     /// Add an image to the document
+    ///
+    /// # Parameters
+    /// * `image` - Image source to add
     pub fn add_image(&mut self, image: ImageSource) {
         self.images.push(image);
     }
 
     /// Add a table to the document
+    ///
+    /// # Parameters
+    /// * `table` - Table source to add
     pub fn add_table(&mut self, table: TableSource) {
         self.tables.push(table);
     }
 
     /// Build the unified document
+    ///
+    /// # Returns
+    /// * `UnifiedDocument` - The completed unified document with all added content
     pub fn build(self) -> UnifiedDocument {
         UnifiedDocument {
             metadata: self.metadata,
