@@ -13,6 +13,7 @@ The intention is to support a workflows using VS Code, Git, and Pull Request rev
 - Support `.drawio.svg` and `.png` image files
 - Support CSV files for tables
 - Generate `.docx` files containing the Markdown, image, and table content
+- Generate an aggregated `.md` file and `images/` folder
 
 ### Future features
 

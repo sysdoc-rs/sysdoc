@@ -1,0 +1,45 @@
+# sysdoc.toml - Document Configuration
+#
+# This file defines the metadata for a sysdoc systems engineering document.
+# Place this file at the root of your document repository, next to the src/ folder.
+
+# Unique identifier for this document
+# Examples: "SDD-001", "SRS-2024-001", "ICD-FCS-001"
+document_id = "SDD-001"
+
+# Human-readable name of the document
+document_name = "Flight Control Software Design Description"
+
+# Type of systems engineering document
+# Common types:
+#   - SSS: System/Subsystem Specification
+#   - SSDD: System/Subsystem Design Description
+#   - SDD: Software Design Description
+#   - SRS: Software Requirements Specification
+#   - ICD: Interface Control Document
+#   - STP: Software Test Plan
+#   - STD: Software Test Description
+#   - STR: Software Test Report
+document_type = "SDD"
+
+# Standard or Data Item Description (DID) the document follows
+# Examples:
+#   - DI-IPSC-81435B (SDD)
+#   - DI-IPSC-81433A (SRS)
+#   - DI-IPSC-81436A (ICD)
+#   - MIL-STD-498
+document_standard = "DI-IPSC-81435B"
+
+# Template used to initially create this document
+# This helps track which template version was used
+document_template = "sdd-standard-v1"
+
+# Document owner/author information
+[document_owner]
+name = "John Doe"
+email = "john.doe@example.com"
+
+# Document approver information
+[document_approver]
+name = "Jane Smith"
+email = "jane.smith@example.com"

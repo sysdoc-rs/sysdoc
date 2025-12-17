@@ -4,11 +4,12 @@ A Rust-based CLI tool for creating and building Systems Engineering documents us
 
 ## Overview
 
-`sysdoc` provides tooling and templates to assist in writing Systems Engineering documents using modern development workflows. Write your documents in Markdown with Git version control, then build them into professional `.docx` files.
+`sysdoc` provides tooling and templates to assist in writing Systems Engineering documents using modern development workflows. Write your documents in Markdown with Git version control, then build them into professional `.docx` or consolidated Markdown files.
 
 ### Key Features
 
 - 📝 **Markdown-based** - Write content in plain text with Markdown formatting
+- 📄 **Multiple output formats** - Build to DOCX or Markdown with images folder
 - 🎨 **DrawIO diagrams** - Embed `.drawio.svg` diagrams directly
 - 📊 **CSV tables** - Use CSV files for easy table management
 - 📁 **Folder-based structure** - Organize content in nested folders
@@ -43,8 +44,11 @@ cd my-sdd
 # Edit your content
 # ... edit Markdown files, add diagrams, etc.
 
-# Build to .docx
+# Build to .docx (default)
 sysdoc build -o output.docx
+
+# Or build to consolidated markdown
+sysdoc build -f markdown -o output
 
 # Validate document structure
 sysdoc validate --check-links --check-images
@@ -126,21 +130,35 @@ sysdoc list-templates
 ### Build a Document
 
 ```bash
-# Basic build
+# Basic build to DOCX (current directory)
 sysdoc build -o output.docx
 
-# With options
-sysdoc build --input ./docs --output ../deliverables/sdd.docx --verbose
+# Build from specific directory
+sysdoc build ./docs -o output.docx
+
+# Build to Markdown with images folder
+sysdoc build -f markdown -o output-dir
+
+# Build with format and options
+sysdoc build ./docs --format docx --output ../deliverables/sdd.docx --verbose
 
 # Watch mode (auto-rebuild on changes)
-sysdoc build --watch
+sysdoc build --watch -o my-doc.docx
 ```
+
+**Output Formats:**
+
+- **DOCX** (default) - Single Microsoft Word `.docx` file with embedded images
+- **Markdown** - Consolidated markdown file with images in a separate folder
 
 ### Validate
 
 ```bash
-# Basic validation
+# Basic validation (current directory)
 sysdoc validate
+
+# Validate specific directory
+sysdoc validate ./docs
 
 # Comprehensive checks
 sysdoc validate --check-links --check-images --check-tables

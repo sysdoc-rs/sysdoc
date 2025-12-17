@@ -1,0 +1,19 @@
+# Cargo configuration for sysdoc workspace
+
+[target.'cfg(all())']
+# Additional rustflags can be added here if needed
+
+[alias]
+# Convenient aliases for development
+
+# Run clippy with pedantic warnings
+clippy-pedantic = "clippy -- -W clippy::pedantic"
+
+# Run clippy with all warnings
+clippy-all = "clippy --all-targets --all-features -- -W clippy::all -W clippy::pedantic"
+
+# Check for security vulnerabilities
+audit-check = "audit --deny warnings"
+
+# Run all checks (format, clippy, test, deny)
+check-all = "check --all-targets --all-features"

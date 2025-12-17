@@ -89,6 +89,12 @@ jobs:
   security:
     name: Security checks
     runs-on: ubuntu-latest
+
+    permissions:
+      # Use the default GITHUB_TOKEN with appropriate permissions
+      contents: read
+      # issues: write # Required if you want the action to create GitHub issues for vulnerabilities
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -101,7 +107,14 @@ jobs:
     - name: Run cargo deny
       run: cargo deny check
 
-    - name: Run cargo audit
-      uses: rustsec/audit-check@v2
+    - name: Clean advisory-db (workaround for cargo-audit error)
+      run: rm -rf ~/.cargo/advisory-db
+
+    - name: Audit Rust Dependencies
+      # Use a community-maintained action
+      uses: actions-rust-lang/audit@v1
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        # Optional: Treat any warnings as errors and fail the action
+        denyWarnings: true
+        # Optional: Comma separated list of Rustsec IDs to ignore
+        # ignore: RUSTSEC-2020-0036
