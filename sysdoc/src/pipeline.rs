@@ -122,8 +122,10 @@ fn parse_markdown_file(path: &Path, root: &Path) -> Result<MarkdownSource, Parse
     };
 
     // Parse the markdown content into sections
+    // Use the markdown file's parent directory for resolving relative paths (images, CSV)
+    let markdown_dir = path.parent().unwrap_or(root);
     source
-        .parse(root)
+        .parse(markdown_dir)
         .map_err(|e| ParseError::SourceModelError(path.to_path_buf(), e))?;
 
     Ok(source)
