@@ -6,10 +6,9 @@
 //! 3. **Export**: Generate output formats (docx, markdown, etc.)
 
 use crate::document_config::DocumentConfig;
-use crate::source_model::{MarkdownSource, SectionNumber, SourceModel};
+use crate::source_model::{MarkdownSection, MarkdownSource, SectionNumber, SourceModel};
 use crate::unified_document::{
-    ContentBlock, DocumentBuilder, DocumentMetadata, DocumentSection, InlineContent, Person,
-    UnifiedDocument,
+    DocumentBuilder, DocumentMetadata, DocumentSection, Person, UnifiedDocument,
 };
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -287,12 +286,8 @@ pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError>
 
     let mut builder = DocumentBuilder::new(metadata, source.root.clone());
 
-    // Sort markdown files by section number
-    let mut sorted_files = source.markdown_files;
-    sorted_files.sort_by(|a, b| a.section_number.cmp(&b.section_number));
-
-    // Build hierarchical section structure
-    let sections = build_section_hierarchy(&sorted_files)?;
+    // Collect, sort, and validate all sections from all markdown files
+    let sections = build_section_hierarchy(source.markdown_files)?;
 
     for section in sections {
         builder.add_section(section);
@@ -307,47 +302,59 @@ pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError>
     Ok(builder.build())
 }
 
-/// Build hierarchical section structure from flat list
+/// Collect, sort, and validate all markdown sections from source files
 ///
 /// # Parameters
-/// * `files` - Flat list of markdown source files, assumed to be sorted by section number
+/// * `files` - List of markdown source files (ownership transferred)
 ///
 /// # Returns
-/// * `Ok(Vec<DocumentSection>)` - Hierarchical vector of document sections
-/// * `Err(TransformError)` - Error building section structure
+/// * `Ok(Vec<DocumentSection>)` - Sorted vector of all sections from all files
+/// * `Err(TransformError)` - Error if duplicate section numbers found or depth exceeded
+///
+/// # Notes
+/// * Sections are moved (not cloned) from source files to avoid copying large content
+/// * Sections are sorted by their section_number field
+/// * Duplicate section numbers are detected and reported as errors
 fn build_section_hierarchy(
-    files: &[MarkdownSource],
+    mut files: Vec<MarkdownSource>,
 ) -> Result<Vec<DocumentSection>, TransformError> {
-    let mut root_sections: Vec<DocumentSection> = Vec::new();
+    // Collect all sections from all files, moving them to avoid cloning
+    let mut all_sections: Vec<MarkdownSection> = Vec::new();
 
-    for file in files {
-        let depth = file.section_number.depth();
-        let heading_level = depth + 1;
-
-        // For now, create a simple flat structure
-        // A more sophisticated implementation would build a proper hierarchy
-        let content = if !file.sections.is_empty() {
-            // Use the content from the first section
-            vec![ContentBlock::Paragraph(vec![InlineContent::Text(
-                file.raw_content.clone(),
-            )])]
-        } else {
-            vec![]
-        };
-
-        let section = DocumentSection {
-            number: file.section_number.clone(),
-            title: file.title.clone(),
-            depth,
-            heading_level,
-            content,
-            subsections: vec![],
-        };
-
-        root_sections.push(section);
+    for file in files.iter_mut() {
+        // Move sections out of the file (append is more efficient than extend(drain))
+        all_sections.append(&mut file.sections);
     }
 
-    Ok(root_sections)
+    // Sort sections by section number
+    all_sections.sort_by(|a, b| a.section_number.cmp(&b.section_number));
+
+    // Check for duplicate section numbers
+    for i in 1..all_sections.len() {
+        if all_sections[i - 1].section_number == all_sections[i].section_number {
+            return Err(TransformError::DuplicateSectionNumber(
+                all_sections[i].section_number.clone(),
+            ));
+        }
+    }
+
+    // Convert MarkdownSections to DocumentSections
+    let document_sections: Vec<DocumentSection> = all_sections
+        .into_iter()
+        .map(|section| {
+            let depth = section.section_number.depth();
+            DocumentSection {
+                number: section.section_number.clone(),
+                title: section.heading_text.clone(),
+                depth,
+                heading_level: section.heading_level,
+                content: vec![], // TODO: Convert MarkdownBlock to ContentBlock
+                subsections: vec![],
+            }
+        })
+        .collect();
+
+    Ok(document_sections)
 }
 
 /// Stage 3: Export unified document to various formats
@@ -436,6 +443,9 @@ pub enum ParseError {
 pub enum TransformError {
     #[error("Invalid document structure: {0}")]
     InvalidStructure(String),
+
+    #[error("Duplicate section number found: {0}")]
+    DuplicateSectionNumber(SectionNumber),
 }
 
 #[cfg(test)]

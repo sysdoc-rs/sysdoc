@@ -45,7 +45,11 @@ impl MarkdownSource {
     /// * The first heading must be level 1 (h1)
     /// * Only the first heading may be level 1 (all subsequent headings must be h2+)
     pub fn parse(&mut self, document_root: &Path) -> Result<(), SourceModelError> {
-        let sections = super::parser::MarkdownParser::parse(&self.raw_content, document_root)?;
+        let sections = super::parser::MarkdownParser::parse(
+            &self.raw_content,
+            document_root,
+            &self.section_number,
+        )?;
 
         // CSV tables are now embedded as CsvTable blocks within sections
         self.sections = sections;
@@ -62,6 +66,11 @@ pub struct MarkdownSection {
 
     /// Text content of the heading (as formatted text runs)
     pub heading_text: String,
+
+    /// Section number combining file section number + heading level increments
+    /// For example, if the file is "01.02_foo.md" and this is the second h2 heading,
+    /// the section_number would be [1, 2, 2] (01.02 from file + 2 from being the 2nd heading)
+    pub section_number: SectionNumber,
 
     /// Parsed markdown content as structured blocks
     /// CSV tables are embedded as CsvTable blocks within this content

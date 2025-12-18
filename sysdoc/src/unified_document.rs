@@ -471,7 +471,7 @@ mod tests {
         };
 
         let section = DocumentSection {
-            number: SectionNumber { parts: vec![1] },
+            number: SectionNumber::parse("1").unwrap(),
             title: "Introduction".to_string(),
             depth: 0,
             heading_level: 1,
@@ -490,7 +490,7 @@ mod tests {
     #[test]
     fn test_section_flatten() {
         let subsection = DocumentSection {
-            number: SectionNumber { parts: vec![1, 1] },
+            number: SectionNumber::parse("1.1").unwrap(),
             title: "Subsection".to_string(),
             depth: 1,
             heading_level: 2,
@@ -499,7 +499,7 @@ mod tests {
         };
 
         let section = DocumentSection {
-            number: SectionNumber { parts: vec![1] },
+            number: SectionNumber::parse("1").unwrap(),
             title: "Section".to_string(),
             depth: 0,
             heading_level: 1,
