@@ -152,6 +152,90 @@ fn parse_filename<'a>(filename: &'a str, path: &Path) -> Result<(&'a str, String
     Ok((number_str, title))
 }
 
+/// Get the git version using `git describe --tags --dirty`
+///
+/// # Returns
+/// * Git version string if successful
+/// * Empty string if git command fails, with a warning logged
+fn get_git_version() -> String {
+    match std::process::Command::new("git")
+        .args(["describe", "--tags", "--dirty"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        Ok(output) => {
+            log::warn!(
+                "Git command failed with status {}: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
+            String::new()
+        }
+        Err(e) => {
+            log::warn!("Failed to execute git describe: {}", e);
+            String::new()
+        }
+    }
+}
+
+/// Get the ISO 8601 datetime of the first git commit
+///
+/// # Returns
+/// * ISO 8601 datetime string if successful
+/// * Empty string if git command fails, with a warning logged
+fn get_git_first_commit_date() -> String {
+    match std::process::Command::new("git")
+        .args(["log", "--reverse", "--format=%aI", "--max-count=1"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        Ok(output) => {
+            log::warn!(
+                "Git log command failed with status {}: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
+            String::new()
+        }
+        Err(e) => {
+            log::warn!("Failed to execute git log for first commit: {}", e);
+            String::new()
+        }
+    }
+}
+
+/// Get the ISO 8601 datetime of the current HEAD commit
+///
+/// # Returns
+/// * ISO 8601 datetime string if successful
+/// * Empty string if git command fails, with a warning logged
+fn get_git_head_commit_date() -> String {
+    match std::process::Command::new("git")
+        .args(["log", "-1", "--format=%aI", "HEAD"])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        Ok(output) => {
+            log::warn!(
+                "Git log command failed with status {}: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
+            String::new()
+        }
+        Err(e) => {
+            log::warn!("Failed to execute git log for HEAD: {}", e);
+            String::new()
+        }
+    }
+}
+
 /// Stage 2: Transform source model into unified document
 ///
 /// # Parameters
@@ -161,6 +245,27 @@ fn parse_filename<'a>(filename: &'a str, path: &Path) -> Result<(&'a str, String
 /// * `Ok(UnifiedDocument)` - Successfully transformed unified document ready for export
 /// * `Err(TransformError)` - Error building document structure
 pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError> {
+    let version_string = get_git_version();
+    let version = if version_string.is_empty() {
+        None
+    } else {
+        Some(version_string)
+    };
+
+    let created_string = get_git_first_commit_date();
+    let created = if created_string.is_empty() {
+        None
+    } else {
+        Some(created_string)
+    };
+
+    let modified_string = get_git_head_commit_date();
+    let modified = if modified_string.is_empty() {
+        None
+    } else {
+        Some(modified_string)
+    };
+
     let metadata = DocumentMetadata {
         document_id: source.config.document_id.clone(),
         title: source.config.document_name.clone(),
@@ -175,9 +280,9 @@ pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError>
             name: source.config.document_approver.name.clone(),
             email: source.config.document_approver.email.clone(),
         },
-        version: None,
-        created: None,
-        modified: None,
+        version,
+        created,
+        modified,
     };
 
     let mut builder = DocumentBuilder::new(metadata, source.root.clone());
