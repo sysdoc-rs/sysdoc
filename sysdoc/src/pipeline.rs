@@ -7,9 +7,7 @@
 
 use crate::document_config::DocumentConfig;
 use crate::source_model::{MarkdownSection, MarkdownSource, SectionNumber, SourceModel};
-use crate::unified_document::{
-    DocumentBuilder, DocumentMetadata, DocumentSection, Person, UnifiedDocument,
-};
+use crate::unified_document::{DocumentBuilder, DocumentMetadata, Person, UnifiedDocument};
 use itertools::Itertools;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -324,8 +322,8 @@ pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError>
 /// * `files` - List of markdown source files (ownership transferred)
 ///
 /// # Returns
-/// * `Ok(Vec<DocumentSection>)` - Sorted vector of all sections from all files
-/// * `Err(TransformError)` - Error if duplicate section numbers found or depth exceeded
+/// * `Ok(Vec<MarkdownSection>)` - Sorted vector of all sections from all files
+/// * `Err(TransformError)` - Error if duplicate section numbers found
 ///
 /// # Notes
 /// * Sections are moved (not cloned) from source files to avoid copying large content
@@ -333,7 +331,7 @@ pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError>
 /// * Duplicate section numbers are detected and reported as errors
 fn build_section_hierarchy(
     mut files: Vec<MarkdownSource>,
-) -> Result<Vec<DocumentSection>, TransformError> {
+) -> Result<Vec<MarkdownSection>, TransformError> {
     // Collect all sections from all files, moving them to avoid cloning
     let mut all_sections: Vec<MarkdownSection> = Vec::new();
 
@@ -356,26 +354,7 @@ fn build_section_hierarchy(
         ));
     }
 
-    // Convert MarkdownSections to DocumentSections
-    let document_sections: Vec<DocumentSection> = all_sections
-        .into_iter()
-        .map(|section| {
-            let depth = section.section_number.depth();
-            // Heading level is based on section number depth, not markdown heading level
-            // depth 0 (e.g., "1") -> Heading1, depth 1 (e.g., "1.1") -> Heading2, etc.
-            let heading_level = depth + 1;
-            DocumentSection {
-                number: section.section_number.clone(),
-                title: section.heading_text.clone(),
-                depth,
-                heading_level,
-                content: vec![], // TODO: Convert MarkdownBlock to ContentBlock
-                subsections: vec![],
-            }
-        })
-        .collect();
-
-    Ok(document_sections)
+    Ok(all_sections)
 }
 
 /// Stage 3: Export unified document to various formats
@@ -476,19 +455,17 @@ pub mod export {
     }
 
     /// Collect all heading strings beforehand so they have a stable lifetime
-    fn collect_all_headings(sections: &[crate::unified_document::DocumentSection]) -> Vec<String> {
-        let mut headings = Vec::new();
-        for section in sections {
-            headings.push(format!("{} {}", section.number, section.title));
-            headings.extend(collect_all_headings(&section.subsections));
-        }
-        headings
+    fn collect_all_headings(sections: &[crate::source_model::MarkdownSection]) -> Vec<String> {
+        sections
+            .iter()
+            .map(|section| format!("{} {}", section.section_number, section.heading_text))
+            .collect()
     }
 
     /// Append a document section to the docx
     fn append_section<'a>(
         docx: &mut Docx<'a>,
-        section: &crate::unified_document::DocumentSection,
+        section: &crate::source_model::MarkdownSection,
         heading_strings: &'a [String],
         heading_index: &mut usize,
     ) -> Result<(), ExportError> {
@@ -496,23 +473,19 @@ pub mod export {
         let heading_ref = heading_strings[*heading_index].as_str();
         *heading_index += 1;
 
-        // Apply Word's built-in heading style based on the section's heading level
-        let style_id = heading_style_id(section.heading_level);
+        // Calculate heading level from section number depth
+        // depth 0 (e.g., "1") -> Heading1, depth 1 (e.g., "1.1") -> Heading2, etc.
+        let heading_level = section.section_number.depth() + 1;
+        let style_id = heading_style_id(heading_level);
         let para = Paragraph::default()
             .property(ParagraphProperty::default().style_id(style_id))
             .push_text(heading_ref);
         docx.document.push(para);
 
-        // TODO: Add section content blocks once ContentBlock -> docx conversion is implemented
-        // For now, add a placeholder if there's content
+        // TODO: Add section content blocks (MarkdownBlock -> docx conversion)
         if !section.content.is_empty() {
             let para = Paragraph::default().push_text("[Content rendering not yet implemented]");
             docx.document.push(para);
-        }
-
-        // Recursively add subsections
-        for subsection in &section.subsections {
-            append_section(docx, subsection, heading_strings, heading_index)?;
         }
 
         Ok(())

@@ -1048,7 +1048,7 @@ Content 3"#;
         assert_eq!(sections[2].section_number.to_string(), "1.2.1.1"); // h3
         assert_eq!(sections[3].section_number.to_string(), "1.2.1.1.1"); // h4
         assert_eq!(sections[4].section_number.to_string(), "1.2.1.1.1.1"); // h5 (depth 6, at max)
-        // h6 would exceed depth, so it falls back to file number
+                                                                           // h6 would exceed depth, so it falls back to file number
         assert_eq!(sections[5].section_number.to_string(), "1.2");
     }
 

@@ -1,18 +1,10 @@
 //! Unified document model for the transformation stage (Stage 2)
 //!
 //! This module defines the structures used after parsing source files
-//! and transforming them into a unified, hierarchical document structure
-//! ready for export.
+//! and aggregating them into a unified document structure ready for export.
 
-use crate::source_model::{Alignment, SectionNumber, TableSource};
+use crate::source_model::{MarkdownSection, TableSource};
 use std::path::PathBuf;
-
-/// Code block kind (for unified document model)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CodeBlockKind {
-    Indented,
-    Fenced,
-}
 
 /// The unified document model ready for export
 #[derive(Debug)]
@@ -21,8 +13,8 @@ pub struct UnifiedDocument {
     pub metadata: DocumentMetadata,
     /// Root directory of the source
     pub root: PathBuf,
-    /// Hierarchical sections of the document
-    pub sections: Vec<DocumentSection>,
+    /// Sorted sections of the document (from all markdown files)
+    pub sections: Vec<MarkdownSection>,
     /// All tables used in the document
     pub tables: Vec<TableSource>,
 }
@@ -45,12 +37,29 @@ impl UnifiedDocument {
         }
     }
 
+    /// Get the total number of tables
+    ///
+    /// # Returns
+    /// * `usize` - Total number of tables in the document
+    pub fn table_count(&self) -> usize {
+        self.tables.len()
+    }
+
+    /// Get the total number of sections
+    ///
+    /// # Returns
+    /// * `usize` - Total number of sections in the document
+    pub fn section_count(&self) -> usize {
+        self.sections.len()
+    }
+
     /// Get the total word count across all sections
     ///
     /// # Returns
-    /// * `usize` - Total word count including all sections and subsections
+    /// * `usize` - Total word count (currently counts content blocks, not actual words)
     pub fn word_count(&self) -> usize {
-        self.sections.iter().map(|s| s.word_count()).sum()
+        // TODO: Implement proper word counting from MarkdownBlock content
+        self.sections.iter().map(|s| s.content.len()).sum()
     }
 
     /// Get the total number of images
@@ -58,15 +67,12 @@ impl UnifiedDocument {
     /// # Returns
     /// * `usize` - Total number of images embedded in all sections
     pub fn image_count(&self) -> usize {
-        self.sections.iter().map(|s| s.image_count()).sum()
-    }
-
-    /// Get the total number of tables
-    ///
-    /// # Returns
-    /// * `usize` - Total number of tables in the document
-    pub fn table_count(&self) -> usize {
-        self.tables.len()
+        use crate::source_model::MarkdownBlock;
+        self.sections
+            .iter()
+            .flat_map(|s| &s.content)
+            .filter(|block| matches!(block, MarkdownBlock::Image { .. }))
+            .count()
     }
 }
 
@@ -102,284 +108,11 @@ pub struct Person {
     pub email: String,
 }
 
-/// A section in the unified document
-#[derive(Debug, Clone)]
-pub struct DocumentSection {
-    /// Section number (e.g., "1.2.3")
-    pub number: SectionNumber,
-    /// Section title
-    pub title: String,
-    /// Nesting depth (0 = top level, 1 = first subsection, etc.)
-    pub depth: usize,
-    /// Adjusted heading level for this section in the final document
-    /// This allows nested sections to have properly adjusted heading levels
-    pub heading_level: usize,
-    /// Content blocks in this section
-    pub content: Vec<ContentBlock>,
-    /// Subsections (nested sections)
-    pub subsections: Vec<DocumentSection>,
-}
-
-impl DocumentSection {
-    /// Get the word count for this section and all subsections
-    ///
-    /// # Returns
-    /// * `usize` - Total word count for this section and all nested subsections
-    pub fn word_count(&self) -> usize {
-        let own_count: usize = self.content.iter().map(|block| block.word_count()).sum();
-        let subsection_count: usize = self.subsections.iter().map(|s| s.word_count()).sum();
-        own_count + subsection_count
-    }
-
-    /// Get the image count for this section and all subsections
-    ///
-    /// # Returns
-    /// * `usize` - Total number of images in this section and all nested subsections
-    pub fn image_count(&self) -> usize {
-        let own_count: usize = self.content.iter().map(|block| block.image_count()).sum();
-        let subsection_count: usize = self.subsections.iter().map(|s| s.image_count()).sum();
-        own_count + subsection_count
-    }
-
-    /// Flatten the section hierarchy into a linear list
-    ///
-    /// # Returns
-    /// * `Vec<&DocumentSection>` - Linear vector of section references in depth-first order
-    pub fn flatten(&self) -> Vec<&DocumentSection> {
-        let mut result = vec![self];
-        for subsection in &self.subsections {
-            result.extend(subsection.flatten());
-        }
-        result
-    }
-}
-
-/// A block of content in a section
-#[derive(Debug, Clone)]
-pub enum ContentBlock {
-    /// A paragraph of inline content
-    Paragraph(Vec<InlineContent>),
-    /// A heading (may occur within a section for sub-headings)
-    Heading {
-        level: usize,
-        content: Vec<InlineContent>,
-    },
-    /// A block quote
-    BlockQuote(Vec<ContentBlock>),
-    /// A code block
-    CodeBlock {
-        kind: CodeBlockKind,
-        lang: Option<String>,
-        code: String,
-    },
-    /// An ordered or unordered list
-    List {
-        ordered: bool,
-        start: Option<u64>,
-        items: Vec<ListItem>,
-    },
-    /// A table
-    Table {
-        alignments: Vec<Alignment>,
-        headers: Vec<Vec<InlineContent>>,
-        rows: Vec<Vec<Vec<InlineContent>>>,
-    },
-    /// An embedded CSV table
-    CsvTable {
-        path: PathBuf,
-        headers: Vec<String>,
-        rows: Vec<Vec<String>>,
-    },
-    /// An image
-    Image {
-        path: PathBuf,
-        alt_text: String,
-        title: Option<String>,
-    },
-    /// A horizontal rule
-    Rule,
-    /// Raw HTML (if needed)
-    Html(String),
-}
-
-impl ContentBlock {
-    /// Get the word count for this content block
-    ///
-    /// # Returns
-    /// * `usize` - Word count for the content block (0 for rules and HTML)
-    pub fn word_count(&self) -> usize {
-        match self {
-            ContentBlock::Paragraph(inlines) => inlines.iter().map(|i| i.word_count()).sum(),
-            ContentBlock::Heading { content, .. } => content.iter().map(|i| i.word_count()).sum(),
-            ContentBlock::BlockQuote(blocks) => blocks.iter().map(|b| b.word_count()).sum(),
-            ContentBlock::CodeBlock { code, .. } => code.split_whitespace().count(),
-            ContentBlock::List { items, .. } => items.iter().map(|i| i.word_count()).sum(),
-            ContentBlock::Table { headers, rows, .. } => {
-                let header_count: usize = headers
-                    .iter()
-                    .flat_map(|h| h.iter().map(|i| i.word_count()))
-                    .sum();
-                let row_count: usize = rows
-                    .iter()
-                    .flat_map(|r| r.iter().flat_map(|c| c.iter().map(|i| i.word_count())))
-                    .sum();
-                header_count + row_count
-            }
-            ContentBlock::CsvTable { headers, rows, .. } => {
-                let header_count: usize =
-                    headers.iter().map(|h| h.split_whitespace().count()).sum();
-                let row_count: usize = rows
-                    .iter()
-                    .flat_map(|r| r.iter().map(|c| c.split_whitespace().count()))
-                    .sum();
-                header_count + row_count
-            }
-            ContentBlock::Image { alt_text, .. } => alt_text.split_whitespace().count(),
-            ContentBlock::Rule | ContentBlock::Html(_) => 0,
-        }
-    }
-
-    /// Get the image count for this content block
-    ///
-    /// # Returns
-    /// * `usize` - Number of images in this content block (1 for Image, 0 for others, recursive for nested blocks)
-    pub fn image_count(&self) -> usize {
-        match self {
-            ContentBlock::Paragraph(inlines) => inlines.iter().map(|i| i.image_count()).sum(),
-            ContentBlock::Heading { content, .. } => content.iter().map(|i| i.image_count()).sum(),
-            ContentBlock::BlockQuote(blocks) => blocks.iter().map(|b| b.image_count()).sum(),
-            ContentBlock::List { items, .. } => items.iter().map(|i| i.image_count()).sum(),
-            ContentBlock::Table { headers, rows, .. } => {
-                let header_count: usize = headers
-                    .iter()
-                    .flat_map(|h| h.iter().map(|i| i.image_count()))
-                    .sum();
-                let row_count: usize = rows
-                    .iter()
-                    .flat_map(|r| r.iter().flat_map(|c| c.iter().map(|i| i.image_count())))
-                    .sum();
-                header_count + row_count
-            }
-            ContentBlock::Image { .. } => 1,
-            ContentBlock::CodeBlock { .. }
-            | ContentBlock::CsvTable { .. }
-            | ContentBlock::Rule
-            | ContentBlock::Html(_) => 0,
-        }
-    }
-}
-
-/// An item in a list
-#[derive(Debug, Clone)]
-pub struct ListItem {
-    /// Content of the list item
-    pub content: Vec<ContentBlock>,
-    /// Whether this is a checked task list item
-    pub checked: Option<bool>,
-}
-
-impl ListItem {
-    /// Get the word count for this list item
-    ///
-    /// # Returns
-    /// * `usize` - Word count for all content blocks in this list item
-    pub fn word_count(&self) -> usize {
-        self.content.iter().map(|b| b.word_count()).sum()
-    }
-
-    /// Get the image count for this list item
-    ///
-    /// # Returns
-    /// * `usize` - Total number of images in all content blocks in this list item
-    pub fn image_count(&self) -> usize {
-        self.content.iter().map(|b| b.image_count()).sum()
-    }
-}
-
-/// Inline content within a paragraph or heading
-#[derive(Debug, Clone)]
-pub enum InlineContent {
-    /// Plain text
-    Text(String),
-    /// Inline code
-    Code(String),
-    /// Emphasized text (italic)
-    Emphasis(Vec<InlineContent>),
-    /// Strong text (bold)
-    Strong(Vec<InlineContent>),
-    /// Strikethrough text
-    Strikethrough(Vec<InlineContent>),
-    /// A hyperlink
-    Link {
-        url: String,
-        title: Option<String>,
-        content: Vec<InlineContent>,
-    },
-    /// An inline image
-    Image {
-        path: PathBuf,
-        alt_text: String,
-        title: Option<String>,
-    },
-    /// Line break (soft)
-    SoftBreak,
-    /// Line break (hard)
-    HardBreak,
-    /// Footnote reference
-    FootnoteReference(String),
-    /// Raw HTML inline
-    Html(String),
-}
-
-impl InlineContent {
-    /// Get the word count for this inline content
-    ///
-    /// # Returns
-    /// * `usize` - Word count (0 for breaks, footnotes, and HTML)
-    pub fn word_count(&self) -> usize {
-        match self {
-            InlineContent::Text(text) => text.split_whitespace().count(),
-            InlineContent::Code(code) => code.split_whitespace().count(),
-            InlineContent::Emphasis(content)
-            | InlineContent::Strong(content)
-            | InlineContent::Strikethrough(content) => content.iter().map(|i| i.word_count()).sum(),
-            InlineContent::Link { content, .. } => content.iter().map(|i| i.word_count()).sum(),
-            InlineContent::Image { alt_text, .. } => alt_text.split_whitespace().count(),
-            InlineContent::SoftBreak
-            | InlineContent::HardBreak
-            | InlineContent::FootnoteReference(_)
-            | InlineContent::Html(_) => 0,
-        }
-    }
-
-    /// Get the image count for this inline content
-    ///
-    /// # Returns
-    /// * `usize` - Number of images (1 for Image, 0 for others, recursive for nested content)
-    pub fn image_count(&self) -> usize {
-        match self {
-            InlineContent::Emphasis(content)
-            | InlineContent::Strong(content)
-            | InlineContent::Strikethrough(content) => {
-                content.iter().map(|i| i.image_count()).sum()
-            }
-            InlineContent::Link { content, .. } => content.iter().map(|i| i.image_count()).sum(),
-            InlineContent::Image { .. } => 1,
-            InlineContent::Text(_)
-            | InlineContent::Code(_)
-            | InlineContent::SoftBreak
-            | InlineContent::HardBreak
-            | InlineContent::FootnoteReference(_)
-            | InlineContent::Html(_) => 0,
-        }
-    }
-}
-
 /// Builder for constructing a UnifiedDocument from source models
 pub struct DocumentBuilder {
     metadata: DocumentMetadata,
     root: PathBuf,
-    sections: Vec<DocumentSection>,
+    sections: Vec<MarkdownSection>,
     tables: Vec<TableSource>,
 }
 
@@ -404,8 +137,8 @@ impl DocumentBuilder {
     /// Add a section to the document
     ///
     /// # Parameters
-    /// * `section` - Document section to add
-    pub fn add_section(&mut self, section: DocumentSection) {
+    /// * `section` - Markdown section to add
+    pub fn add_section(&mut self, section: MarkdownSection) {
         self.sections.push(section);
     }
 
@@ -431,27 +164,13 @@ impl DocumentBuilder {
     }
 }
 
-// TODO: Rewrite ContentTransformer to work with new Block structure
-// The new source model uses Block with TextRun instead of the old MarkdownContent
-//
-// /// Transformer for converting source Blocks to ContentBlock/InlineContent
-// pub struct ContentTransformer;
-//
-// impl ContentTransformer {
-//     /// Transform a sequence of source Blocks into ContentBlocks
-//     pub fn transform(blocks: &[SourceBlock]) -> Vec<ContentBlock> {
-//         // Implementation needed to convert from SourceBlock to ContentBlock
-//         Vec::new()
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::source_model::SectionNumber;
 
-    #[test]
-    fn test_document_word_count() {
-        let metadata = DocumentMetadata {
+    fn test_metadata() -> DocumentMetadata {
+        DocumentMetadata {
             document_id: "TEST-001".to_string(),
             title: "Test Document".to_string(),
             doc_type: "SDD".to_string(),
@@ -468,48 +187,29 @@ mod tests {
             version: None,
             created: None,
             modified: None,
-        };
-
-        let section = DocumentSection {
-            number: SectionNumber::parse("1").unwrap(),
-            title: "Introduction".to_string(),
-            depth: 0,
-            heading_level: 1,
-            content: vec![ContentBlock::Paragraph(vec![InlineContent::Text(
-                "This is a test paragraph with several words".to_string(),
-            )])],
-            subsections: vec![],
-        };
-
-        let mut doc = UnifiedDocument::new(metadata, PathBuf::from("."));
-        doc.sections.push(section);
-
-        assert_eq!(doc.word_count(), 8); // "This is a test paragraph with several words"
+        }
     }
 
     #[test]
-    fn test_section_flatten() {
-        let subsection = DocumentSection {
-            number: SectionNumber::parse("1.1").unwrap(),
-            title: "Subsection".to_string(),
-            depth: 1,
-            heading_level: 2,
-            content: vec![],
-            subsections: vec![],
-        };
-
-        let section = DocumentSection {
-            number: SectionNumber::parse("1").unwrap(),
-            title: "Section".to_string(),
-            depth: 0,
+    fn test_document_builder() {
+        let section = MarkdownSection {
             heading_level: 1,
+            heading_text: "Introduction".to_string(),
+            section_number: SectionNumber::parse("1").unwrap(),
             content: vec![],
-            subsections: vec![subsection],
         };
 
-        let flattened = section.flatten();
-        assert_eq!(flattened.len(), 2);
-        assert_eq!(flattened[0].title, "Section");
-        assert_eq!(flattened[1].title, "Subsection");
+        let mut builder = DocumentBuilder::new(test_metadata(), PathBuf::from("."));
+        builder.add_section(section);
+        let doc = builder.build();
+
+        assert_eq!(doc.sections.len(), 1);
+        assert_eq!(doc.sections[0].heading_text, "Introduction");
+    }
+
+    #[test]
+    fn test_table_count() {
+        let doc = UnifiedDocument::new(test_metadata(), PathBuf::from("."));
+        assert_eq!(doc.table_count(), 0);
     }
 }
