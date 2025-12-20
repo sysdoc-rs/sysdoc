@@ -364,8 +364,8 @@ pub mod export {
     use docx_rust::{
         document::{
             Blip, BlipFill, CNvPicPr, CNvPr, DocPr, Drawing, Ext, Extent, FillRect, Graphic,
-            GraphicData, Inline, NvPicPr, Paragraph, Picture, PrstGeom, Run, SpPr, Stretch,
-            TextSpace, Xfrm,
+            GraphicData, Inline, NvPicPr, Paragraph, Picture, PrstGeom, Run, SpPr, Stretch, Table,
+            TableCell, TableGrid, TableRow, TextSpace, Xfrm,
         },
         formatting::{CharacterProperty, Fonts, JustificationVal, ParagraphProperty},
         media::MediaType,
@@ -761,6 +761,44 @@ pub mod export {
         Ok(())
     }
 
+    /// Append a CSV table to the document
+    ///
+    /// Handles the various states a CSV table reference can be in:
+    /// - File doesn't exist: shows error placeholder
+    /// - Data is None (failed to load): shows error placeholder
+    /// - Data is empty: shows warning placeholder
+    /// - Data is valid: creates and appends a DOCX table
+    fn append_csv_table(
+        docx: &mut Docx<'_>,
+        path: &Path,
+        exists: bool,
+        data: &Option<Vec<Vec<String>>>,
+    ) {
+        if !exists {
+            let para =
+                Paragraph::default().push_text(format!("[Missing CSV file: {}]", path.display()));
+            docx.document.push(para);
+            return;
+        }
+
+        let Some(csv_data) = data else {
+            let para =
+                Paragraph::default().push_text(format!("[Failed to load CSV: {}]", path.display()));
+            docx.document.push(para);
+            return;
+        };
+
+        if csv_data.is_empty() {
+            let para =
+                Paragraph::default().push_text(format!("[Empty CSV file: {}]", path.display()));
+            docx.document.push(para);
+            return;
+        }
+
+        let table = create_csv_table(csv_data);
+        docx.document.push(table);
+    }
+
     /// Create a paragraph for an image block
     fn create_image_paragraph(
         absolute_path: &PathBuf,
@@ -810,7 +848,11 @@ pub mod export {
                 let para = create_image_paragraph(absolute_path, alt_text, *exists, image_lookup);
                 docx.document.push(para);
             }
-            // TODO: Handle other block types
+            MarkdownBlock::CsvTable {
+                path, exists, data, ..
+            } => {
+                append_csv_table(docx, path, *exists, data);
+            }
             _ => {
                 // For unhandled block types, add a placeholder
                 let para = Paragraph::default().push_text(format!(
@@ -875,6 +917,82 @@ pub mod export {
         Run::default()
             .property(prop)
             .push_text((text, TextSpace::Preserve))
+    }
+
+    /// Create a DOCX table from CSV data
+    ///
+    /// Converts a 2D vector of strings (where the first row is headers) into a DOCX table.
+    /// Headers are formatted in bold. Column widths are distributed evenly.
+    ///
+    /// # Parameters
+    /// * `data` - 2D vector where first row is headers, remaining rows are data
+    ///
+    /// # Returns
+    /// * `Table` - A formatted DOCX table ready to be inserted into the document
+    fn create_csv_table(data: &[Vec<String>]) -> Table<'static> {
+        let mut table = Table::default();
+
+        // Determine number of columns from the first row (or 0 if empty)
+        let num_cols = data.first().map(|row| row.len()).unwrap_or(0);
+
+        // Create table grid with equal column widths
+        // Using a reasonable width value (2000 twips per column)
+        let mut grid = TableGrid::default();
+        for _ in 0..num_cols {
+            grid = grid.push_column(2000);
+        }
+        table.grids = grid;
+
+        // Process rows
+        for (row_idx, row_data) in data.iter().enumerate() {
+            let is_header = row_idx == 0;
+            let table_row = create_table_row(row_data, is_header);
+            table = table.push_row(table_row);
+        }
+
+        table
+    }
+
+    /// Create a table row from a vector of cell strings
+    ///
+    /// # Parameters
+    /// * `cells` - Vector of strings, one per cell
+    /// * `is_header` - If true, text will be formatted in bold
+    ///
+    /// # Returns
+    /// * `TableRow` - A formatted table row
+    fn create_table_row(cells: &[String], is_header: bool) -> TableRow<'static> {
+        let mut row = TableRow::default();
+
+        for cell_text in cells {
+            let cell = create_table_cell(cell_text, is_header);
+            row = row.push_cell(cell);
+        }
+
+        row
+    }
+
+    /// Create a table cell with text content
+    ///
+    /// # Parameters
+    /// * `text` - The text content for the cell
+    /// * `bold` - If true, text will be formatted in bold
+    ///
+    /// # Returns
+    /// * `TableCell` - A formatted table cell containing a paragraph with the text
+    fn create_table_cell(text: &str, bold: bool) -> TableCell<'static> {
+        let mut prop = CharacterProperty::default();
+        if bold {
+            prop = prop.bold(true);
+        }
+
+        let run = Run::default()
+            .property(prop)
+            .push_text((text.to_string(), TextSpace::Preserve));
+
+        let para = Paragraph::default().push(run);
+
+        TableCell::from(para)
     }
 
     /// Export errors

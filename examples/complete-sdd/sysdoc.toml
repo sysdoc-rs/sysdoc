@@ -1,0 +1,15 @@
+# sysdoc.toml - Document Configuration for Complete SDD Example
+
+document_id = "SDD-EXAMPLE-001"
+document_name = "Complete SDD Example"
+document_type = "SDD"
+document_standard = "DI-IPSC-81435B"
+document_template = "sdd-standard-v1"
+
+[document_owner]
+name = "Example Author"
+email = "author@example.com"
+
+[document_approver]
+name = "Example Approver"
+email = "approver@example.com"
