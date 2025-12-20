@@ -409,6 +409,9 @@ pub mod export {
         height_px: Option<usize>,
     }
 
+    /// Image lookup info: (relationship_id, image_index, width_px, height_px)
+    type ImageLookupInfo<'a> = (&'a str, isize, Option<usize>, Option<usize>);
+
     /// Collect and load all images from document sections
     fn collect_images(
         sections: &[crate::source_model::MarkdownSection],
@@ -418,57 +421,69 @@ pub mod export {
         // Start relationship IDs high to avoid conflicts with template
         let mut rel_id_counter = 100;
 
-        for section in sections {
-            for block in &section.content {
-                if let MarkdownBlock::Image {
-                    absolute_path,
-                    exists,
-                    ..
-                } = block
-                {
-                    if *exists && !images.contains_key(absolute_path) {
-                        if let Ok(bytes) = std::fs::read(absolute_path) {
-                            let extension = absolute_path
-                                .extension()
-                                .and_then(|e| e.to_str())
-                                .unwrap_or("png");
-                            let media_path = format!("media/image{}.{}", image_counter, extension);
-                            let rel_id = format!("rId{}", rel_id_counter);
-
-                            // Read image dimensions from the bytes
-                            let (width_px, height_px) =
-                                match imagesize::blob_size(&bytes) {
-                                    Ok(size) => (Some(size.width), Some(size.height)),
-                                    Err(e) => {
-                                        log::warn!(
-                                            "Could not read dimensions for {}: {}",
-                                            absolute_path.display(),
-                                            e
-                                        );
-                                        (None, None)
-                                    }
-                                };
-
-                            images.insert(
-                                absolute_path.clone(),
-                                ImageData {
-                                    bytes,
-                                    media_path,
-                                    rel_id,
-                                    width_px,
-                                    height_px,
-                                },
-                            );
-
-                            image_counter += 1;
-                            rel_id_counter += 1;
-                        }
-                    }
-                }
+        let all_blocks = sections.iter().flat_map(|s| &s.content);
+        for block in all_blocks {
+            if let Some(image_data) = try_load_image(block, &images, image_counter, rel_id_counter)
+            {
+                images.insert(image_data.0, image_data.1);
+                image_counter += 1;
+                rel_id_counter += 1;
             }
         }
 
         images
+    }
+
+    /// Try to load an image from a block, returning None if it's not an image or can't be loaded
+    fn try_load_image(
+        block: &MarkdownBlock,
+        existing: &HashMap<PathBuf, ImageData>,
+        image_counter: usize,
+        rel_id_counter: usize,
+    ) -> Option<(PathBuf, ImageData)> {
+        let MarkdownBlock::Image {
+            absolute_path,
+            exists,
+            ..
+        } = block
+        else {
+            return None;
+        };
+
+        if !*exists || existing.contains_key(absolute_path) {
+            return None;
+        }
+
+        let bytes = std::fs::read(absolute_path).ok()?;
+
+        let extension = absolute_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("png");
+        let media_path = format!("media/image{}.{}", image_counter, extension);
+        let rel_id = format!("rId{}", rel_id_counter);
+
+        let (width_px, height_px) = imagesize::blob_size(&bytes)
+            .map(|size| (Some(size.width), Some(size.height)))
+            .unwrap_or_else(|e| {
+                log::warn!(
+                    "Could not read dimensions for {}: {}",
+                    absolute_path.display(),
+                    e
+                );
+                (None, None)
+            });
+
+        Some((
+            absolute_path.clone(),
+            ImageData {
+                bytes,
+                media_path,
+                rel_id,
+                width_px,
+                height_px,
+            },
+        ))
     }
 
     /// EMUs (English Metric Units) per inch - Word uses this for measurements
@@ -669,7 +684,7 @@ pub mod export {
         }
 
         // Create a lookup map from absolute path to (rel_id, image_index, width, height) for use in append_block
-        let image_lookup: HashMap<&PathBuf, (&str, isize, Option<usize>, Option<usize>)> = images
+        let image_lookup: HashMap<&PathBuf, ImageLookupInfo<'_>> = images
             .iter()
             .enumerate()
             .map(|(idx, (path, data))| {
@@ -723,7 +738,7 @@ pub mod export {
         section: &crate::source_model::MarkdownSection,
         heading_strings: &'a [String],
         heading_index: &mut usize,
-        image_lookup: &HashMap<&PathBuf, (&str, isize, Option<usize>, Option<usize>)>,
+        image_lookup: &HashMap<&PathBuf, ImageLookupInfo<'_>>,
     ) -> Result<(), ExportError> {
         // Get the pre-generated heading string
         let heading_ref = heading_strings[*heading_index].as_str();
@@ -746,6 +761,30 @@ pub mod export {
         Ok(())
     }
 
+    /// Create a paragraph for an image block
+    fn create_image_paragraph(
+        absolute_path: &PathBuf,
+        alt_text: &str,
+        exists: bool,
+        image_lookup: &HashMap<&PathBuf, ImageLookupInfo<'_>>,
+    ) -> Paragraph<'static> {
+        if !exists {
+            return Paragraph::default()
+                .push_text(format!("[Missing image: {}]", absolute_path.display()));
+        }
+
+        let Some((rel_id, image_id, width_px, height_px)) = image_lookup.get(absolute_path) else {
+            return Paragraph::default()
+                .push_text(format!("[Image not found: {}]", absolute_path.display()));
+        };
+
+        let drawing = create_image_drawing(rel_id, *image_id, alt_text, *width_px, *height_px);
+        let run = Run::default().push(drawing);
+        Paragraph::default()
+            .property(ParagraphProperty::default().justification(JustificationVal::Center))
+            .push(run)
+    }
+
     /// Append a MarkdownBlock to the docx document
     ///
     /// Converts markdown block elements to their docx equivalents.
@@ -755,7 +794,7 @@ pub mod export {
     fn append_block(
         docx: &mut Docx<'_>,
         block: &MarkdownBlock,
-        image_lookup: &HashMap<&PathBuf, (&str, isize, Option<usize>, Option<usize>)>,
+        image_lookup: &HashMap<&PathBuf, ImageLookupInfo<'_>>,
     ) {
         match block {
             MarkdownBlock::Paragraph(runs) => {
@@ -768,33 +807,8 @@ pub mod export {
                 exists,
                 ..
             } => {
-                if *exists {
-                    if let Some((rel_id, image_id, width_px, height_px)) =
-                        image_lookup.get(absolute_path)
-                    {
-                        let drawing =
-                            create_image_drawing(rel_id, *image_id, alt_text, *width_px, *height_px);
-                        let run = Run::default().push(drawing);
-                        // Center the image paragraph
-                        let para = Paragraph::default()
-                            .property(
-                                ParagraphProperty::default()
-                                    .justification(JustificationVal::Center),
-                            )
-                            .push(run);
-                        docx.document.push(para);
-                    } else {
-                        // Image not found in lookup (shouldn't happen)
-                        let para = Paragraph::default()
-                            .push_text(format!("[Image not found: {}]", absolute_path.display()));
-                        docx.document.push(para);
-                    }
-                } else {
-                    // Image file doesn't exist
-                    let para = Paragraph::default()
-                        .push_text(format!("[Missing image: {}]", absolute_path.display()));
-                    docx.document.push(para);
-                }
+                let para = create_image_paragraph(absolute_path, alt_text, *exists, image_lookup);
+                docx.document.push(para);
             }
             // TODO: Handle other block types
             _ => {
