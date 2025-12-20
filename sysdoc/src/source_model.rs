@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 // Submodules
 mod blocks;
+mod error;
 mod image;
 mod markdown_source;
 mod parser;
@@ -19,11 +20,11 @@ mod validation;
 
 // Re-export public types
 pub use blocks::MarkdownBlock;
-pub use image::{ImageFormat, ImageSource};
+pub use error::SourceModelError;
 pub use markdown_source::{MarkdownSection, MarkdownSource};
 pub use section_number::SectionNumber;
 pub use table::TableSource;
-pub use types::Alignment;
+pub use text_run::TextRun;
 pub use validation::ValidationError;
 
 /// Collection of all source files discovered and parsed
@@ -36,28 +37,32 @@ pub struct SourceModel {
     pub config: DocumentConfig,
 
     /// All markdown source files, ordered by discovery (not sorted yet)
+    /// CSV tables are embedded as CsvTable blocks within the markdown sections
     pub markdown_files: Vec<MarkdownSource>,
-
-    /// All image files referenced in the markdown
-    pub image_files: Vec<ImageSource>,
-
-    /// All CSV table files referenced in the markdown
-    pub table_files: Vec<TableSource>,
 }
 
 impl SourceModel {
     /// Create a new empty source model
+    ///
+    /// # Parameters
+    /// * `root` - Root directory path of the document
+    /// * `config` - Document configuration loaded from sysdoc.toml
+    ///
+    /// # Returns
+    /// * `SourceModel` - A new empty source model with no files
     pub fn new(root: PathBuf, config: DocumentConfig) -> Self {
         Self {
             root,
             config,
             markdown_files: Vec::new(),
-            image_files: Vec::new(),
-            table_files: Vec::new(),
         }
     }
 
     /// Validate that all referenced resources exist
+    ///
+    /// # Returns
+    /// * `Ok(())` - All referenced images and tables exist
+    /// * `Err(ValidationError)` - One or more referenced resources are missing
     pub fn validate(&self) -> Result<(), ValidationError> {
         let image_errors = self.validate_image_references();
         let table_errors = self.validate_table_references();
@@ -93,17 +98,14 @@ impl SourceModel {
         section
             .content
             .iter()
-            .filter_map(|block| {
-                if let MarkdownBlock::Image { path, .. } = block {
-                    Some(path)
-                } else {
-                    None
+            .filter_map(|block| match block {
+                MarkdownBlock::Image { path, exists, .. } if !exists => {
+                    Some(ValidationError::MissingImage {
+                        referenced_in: md_file.path.clone(),
+                        image_path: path.clone(),
+                    })
                 }
-            })
-            .filter(|img_path| !self.image_files.iter().any(|img| &img.path == *img_path))
-            .map(|img_path| ValidationError::MissingImage {
-                referenced_in: md_file.path.clone(),
-                image_path: img_path.clone(),
+                _ => None,
             })
             .collect()
     }
@@ -128,12 +130,16 @@ impl SourceModel {
         section: &MarkdownSection,
     ) -> Vec<ValidationError> {
         section
-            .table_refs
+            .content
             .iter()
-            .filter(|table_ref| !self.table_files.iter().any(|tbl| &tbl.path == *table_ref))
-            .map(|table_ref| ValidationError::MissingTable {
-                referenced_in: md_file.path.clone(),
-                table_path: table_ref.clone(),
+            .filter_map(|block| match block {
+                MarkdownBlock::CsvTable { path, exists, .. } if !exists => {
+                    Some(ValidationError::MissingTable {
+                        referenced_in: md_file.path.clone(),
+                        table_path: path.clone(),
+                    })
+                }
+                _ => None,
             })
             .collect()
     }

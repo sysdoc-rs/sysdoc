@@ -1,9 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = [
-    "sysdoc",
-]
+members = ["sysdoc"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,12 +10,19 @@ authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive"] }
 pulldown-cmark = "0.13"
 walkdir = "2.5"
-csv = "1.3"
-serde = { version = "1.0", features = ["derive"] }
-toml = "0.8"
-log = "0.4"
+csv = "1.4"
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "0.9.8"
+log = "0.4.29"
 env_logger = "0.11"
-anyhow = "1.0"
+anyhow = "1.0.100"
+thiserror = "2.0.17"
+itertools = "0.14"
+docx-rust = "0.1"
+imagesize = "0.13"
+
+# [patch.crates-io]
+# docx-rust = { path = "C:/Development/docx-rs" }

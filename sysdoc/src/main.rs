@@ -30,7 +30,6 @@ mod unified_document;
 use anyhow::{Context, Result};
 use clap::Parser;
 use cli::{Cli, Commands, OutputFormat};
-use walker::walk_document;
 
 /// Main entry point for the sysdoc CLI application
 fn main() {
@@ -146,35 +145,79 @@ fn handle_build_command(
     verbose: bool,
     no_images: bool,
 ) -> Result<()> {
+    // Initialize logging if verbose
     if verbose {
+        env_logger::Builder::from_default_env()
+            .filter_level(log::LevelFilter::Info)
+            .init();
         print_build_info(&input, &output, format, no_images);
     }
 
-    // Walk the document directory and build the model
-    let document = walk_document(&input)
-        .with_context(|| format!("Failed to build document from {}", input.display()))?;
+    println!("Building documentation...");
+    println!("Input: {}", input.display());
+    println!("Output: {}", output.display());
 
+    // Stage 1: Parse all source files
+    println!("\n[Stage 1/3] Parsing source files...");
+    let source_model = pipeline::parse_sources(&input)
+        .with_context(|| format!("Failed to parse sources from {}", input.display()))?;
+
+    println!(
+        "✓ Parsed {} markdown files",
+        source_model.markdown_files.len()
+    );
+
+    // Extract template path from config before consuming source_model
+    let docx_template_path = source_model
+        .config
+        .docx_template_path
+        .as_ref()
+        .map(|p| input.join(p));
+
+    // Stage 2: Transform to unified document
+    println!("\n[Stage 2/3] Transforming to unified document...");
+    let unified_doc = pipeline::transform(source_model)
+        .with_context(|| "Failed to transform source model to unified document")?;
+
+    println!("✓ Transformed {} sections", unified_doc.sections.len());
     if verbose {
-        print_section_summary(&document);
+        println!("  - {} words", unified_doc.word_count());
+        println!("  - {} images", unified_doc.image_count());
+        println!("  - {} tables", unified_doc.table_count());
     }
 
-    println!("\nDocument parsed successfully!");
-    println!("Sections: {}", document.sections.len());
+    // Stage 3: Export to output format
+    println!(
+        "\n[Stage 3/3] Exporting to {}...",
+        match format {
+            OutputFormat::Docx => "DOCX",
+            OutputFormat::Markdown => "Markdown",
+        }
+    );
 
-    // Summary of resources
-    let total_images: usize = document.sections.iter().map(|s| s.images.len()).sum();
-    let total_tables: usize = document.sections.iter().map(|s| s.tables.len()).sum();
-    if total_images > 0 || total_tables > 0 {
-        println!(
-            "Resources: {} images, {} tables",
-            total_images, total_tables
-        );
+    match format {
+        OutputFormat::Docx => {
+            let template_path = docx_template_path.as_ref().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "DOCX export requires a template. Set 'docx_template_path' in sysdoc.toml"
+                )
+            })?;
+            pipeline::export::to_docx(&unified_doc, template_path, &output)
+                .with_context(|| format!("Failed to export DOCX to {}", output.display()))?;
+            println!("✓ Successfully wrote: {}", output.display());
+        }
+        OutputFormat::Markdown => {
+            pipeline::export::to_markdown(&unified_doc, &output)
+                .with_context(|| format!("Failed to export Markdown to {}", output.display()))?;
+            println!("✓ Successfully wrote: {}", output.display());
+        }
     }
 
-    // TODO: Implement rendering to DOCX or Markdown
     if watch {
-        println!("Watch mode not yet implemented");
+        println!("\nWatch mode not yet implemented");
     }
+
+    println!("\n✓ Build completed successfully!");
 
     Ok(())
 }

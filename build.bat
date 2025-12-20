@@ -30,7 +30,7 @@ if !errorlevel! neq 0 (
 )
 
 echo Running cargo doc...
-cargo doc --no-deps
+cargo doc --no-deps --document-private-items
 if !errorlevel! neq 0 (
     echo ERROR: cargo doc failed
     exit /b 1

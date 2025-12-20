@@ -1,8 +1,9 @@
 //! Markdown source file representation
 
 use super::blocks::MarkdownBlock;
+use super::error::SourceModelError;
 use super::section_number::SectionNumber;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// A single markdown source file with its parsed content
 #[derive(Debug)]
@@ -28,11 +29,31 @@ pub struct MarkdownSource {
 
 impl MarkdownSource {
     /// Parse the markdown content into sections
-    pub fn parse(&mut self) {
-        let (sections, _table_refs) = super::parser::MarkdownParser::parse(&self.raw_content);
+    ///
+    /// Parses the raw markdown content and populates the sections field
+    /// with structured markdown sections delimited by headings.
+    ///
+    /// # Parameters
+    /// * `document_root` - Root directory of the document for resolving relative image paths
+    ///
+    /// # Returns
+    /// * `Ok(())` - Successfully parsed markdown
+    /// * `Err(SourceModelError)` - Parse/validation error (e.g., invalid heading structure)
+    ///
+    /// # Validation Rules
+    /// * Source markdown must contain at least one heading
+    /// * The first heading must be level 1 (h1)
+    /// * Only the first heading may be level 1 (all subsequent headings must be h2+)
+    pub fn parse(&mut self, document_root: &Path) -> Result<(), SourceModelError> {
+        let sections = super::parser::MarkdownParser::parse(
+            &self.raw_content,
+            document_root,
+            &self.section_number,
+        )?;
 
-        // The parser already integrates table refs into the sections
+        // CSV tables are now embedded as CsvTable blocks within sections
         self.sections = sections;
+        Ok(())
     }
 }
 
@@ -46,9 +67,12 @@ pub struct MarkdownSection {
     /// Text content of the heading (as formatted text runs)
     pub heading_text: String,
 
-    /// Parsed markdown content as structured blocks
-    pub content: Vec<MarkdownBlock>,
+    /// Section number combining file section number + heading level increments
+    /// For example, if the file is "01.02_foo.md" and this is the second h2 heading,
+    /// the section_number would be [1, 2, 2] (01.02 from file + 2 from being the 2nd heading)
+    pub section_number: SectionNumber,
 
-    /// CSV tables referenced in this section
-    pub table_refs: Vec<PathBuf>,
+    /// Parsed markdown content as structured blocks
+    /// CSV tables are embedded as CsvTable blocks within this content
+    pub content: Vec<MarkdownBlock>,
 }

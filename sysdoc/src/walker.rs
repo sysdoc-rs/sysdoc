@@ -41,6 +41,13 @@ impl std::fmt::Display for WalkerError {
 impl std::error::Error for WalkerError {}
 
 /// Walk a document directory and build the document model
+///
+/// # Parameters
+/// * `root` - Root directory containing the document source files
+///
+/// # Returns
+/// * `Ok(DocumentModel)` - Successfully built document model with all sections
+/// * `Err(WalkerError)` - Error reading files or parsing section information
 pub fn walk_document(root: &Path) -> Result<DocumentModel, WalkerError> {
     let mut document = DocumentModel::new(root.to_path_buf());
     let mut sections = Vec::new();
@@ -75,6 +82,14 @@ pub fn walk_document(root: &Path) -> Result<DocumentModel, WalkerError> {
 }
 
 /// Parse a single markdown file into a Section
+///
+/// # Parameters
+/// * `path` - Path to the markdown file to parse
+/// * `_root` - Root directory (currently unused but reserved for future use)
+///
+/// # Returns
+/// * `Ok(DocumentSection)` - Successfully parsed document section
+/// * `Err(WalkerError)` - Error reading file or parsing section metadata
 fn parse_section(path: &Path, _root: &Path) -> Result<DocumentSection, WalkerError> {
     // Read file content
     let content = fs::read_to_string(path)?;
@@ -112,9 +127,18 @@ fn parse_section(path: &Path, _root: &Path) -> Result<DocumentSection, WalkerErr
 }
 
 /// Parse filename into section number and title
-/// Examples:
-///   "01.01_purpose" -> ("01.01", "Purpose")
-///   "02.03.01_details" -> ("02.03.01", "Details")
+///
+/// # Parameters
+/// * `filename` - Filename without extension (e.g., "01.01_purpose")
+/// * `path` - Full path to the file (used for error reporting)
+///
+/// # Returns
+/// * `Ok((number_str, title))` - Successfully parsed section number string and title
+/// * `Err(WalkerError)` - Invalid filename format (must be "XX.YY_title")
+///
+/// # Examples
+/// * "01.01_purpose" -> ("01.01", "Purpose")
+/// * "02.03.01_details" -> ("02.03.01", "Details")
 fn parse_filename<'a>(filename: &'a str, path: &Path) -> Result<(&'a str, String), WalkerError> {
     // Find the underscore separator
     let parts: Vec<&str> = filename.splitn(2, '_').collect();

@@ -1,58 +1,32 @@
 //! Validation error types
 
 use std::path::PathBuf;
+use thiserror::Error;
 
 /// Validation errors
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ValidationError {
     /// A referenced image file is missing
+    #[error("Missing image '{image_path}' referenced in '{referenced_in}'", image_path = image_path.display(), referenced_in = referenced_in.display())]
     MissingImage {
         referenced_in: PathBuf,
         image_path: PathBuf,
     },
     /// A referenced table file is missing
+    #[error("Missing table '{table_path}' referenced in '{referenced_in}'", table_path = table_path.display(), referenced_in = referenced_in.display())]
     MissingTable {
         referenced_in: PathBuf,
         table_path: PathBuf,
     },
     /// Multiple validation errors
+    #[error("Multiple validation errors: {}", format_errors(.0))]
     Multiple(Vec<ValidationError>),
 }
 
-impl std::fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ValidationError::MissingImage {
-                referenced_in,
-                image_path,
-            } => {
-                write!(
-                    f,
-                    "Missing image '{}' referenced in '{}'",
-                    image_path.display(),
-                    referenced_in.display()
-                )
-            }
-            ValidationError::MissingTable {
-                referenced_in,
-                table_path,
-            } => {
-                write!(
-                    f,
-                    "Missing table '{}' referenced in '{}'",
-                    table_path.display(),
-                    referenced_in.display()
-                )
-            }
-            ValidationError::Multiple(errors) => {
-                writeln!(f, "Multiple validation errors:")?;
-                for error in errors {
-                    writeln!(f, "  - {}", error)?;
-                }
-                Ok(())
-            }
-        }
-    }
+/// Helper function to format multiple errors
+fn format_errors(errors: &[ValidationError]) -> String {
+    errors
+        .iter()
+        .map(|e| format!("\n  - {}", e))
+        .collect::<String>()
 }
-
-impl std::error::Error for ValidationError {}

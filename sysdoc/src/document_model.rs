@@ -16,6 +16,12 @@ pub struct DocumentModel {
 
 impl DocumentModel {
     /// Create a new empty document
+    ///
+    /// # Parameters
+    /// * `root` - Root directory path of the document source
+    ///
+    /// # Returns
+    /// * `DocumentModel` - A new empty document model with no sections
     pub fn new(root: PathBuf) -> Self {
         Self {
             root,

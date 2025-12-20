@@ -31,3 +31,4 @@ desktop.ini
 **/output.docx
 examples/**/output/
 target/test-output/
+nul

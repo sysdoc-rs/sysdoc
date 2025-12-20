@@ -44,6 +44,13 @@ pub struct Person {
 
 impl DocumentConfig {
     /// Load configuration from a sysdoc.toml file
+    ///
+    /// # Parameters
+    /// * `path` - Path to the sysdoc.toml configuration file
+    ///
+    /// # Returns
+    /// * `Ok(DocumentConfig)` - Successfully loaded configuration
+    /// * `Err(DocumentConfigError)` - Error reading or parsing the configuration file
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, DocumentConfigError> {
         let content = fs::read_to_string(&path).map_err(DocumentConfigError::IoError)?;
 
@@ -54,6 +61,13 @@ impl DocumentConfig {
     }
 
     /// Save configuration to a sysdoc.toml file
+    ///
+    /// # Parameters
+    /// * `path` - Path where the sysdoc.toml file will be written
+    ///
+    /// # Returns
+    /// * `Ok(())` - Successfully saved configuration
+    /// * `Err(DocumentConfigError)` - Error serializing or writing the configuration file
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), DocumentConfigError> {
         let content = toml::to_string_pretty(self).map_err(DocumentConfigError::SerializeError)?;
 

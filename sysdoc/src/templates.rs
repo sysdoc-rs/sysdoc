@@ -19,6 +19,9 @@ pub struct TemplateInfo {
 }
 
 /// Get all available templates
+///
+/// # Returns
+/// * `Vec<TemplateInfo>` - Vector of all built-in template definitions
 pub fn get_all_templates() -> Vec<TemplateInfo> {
     vec![
         TemplateInfo {
@@ -49,6 +52,13 @@ pub fn get_all_templates() -> Vec<TemplateInfo> {
 }
 
 /// Get a template by ID or alias
+///
+/// # Parameters
+/// * `id` - Template identifier, document type (e.g., "SDD"), or specification ID (e.g., "DI-IPSC-81435B")
+///
+/// # Returns
+/// * `Some(TemplateInfo)` - Template information if found
+/// * `None` - No template found matching the given identifier
 pub fn get_template(id: &str) -> Option<TemplateInfo> {
     // Build a lookup map with both IDs and common aliases
     let mut lookup: HashMap<String, TemplateInfo> = HashMap::new();
@@ -69,6 +79,13 @@ pub fn get_template(id: &str) -> Option<TemplateInfo> {
 }
 
 /// Parse a template into TemplateConfig
+///
+/// # Parameters
+/// * `template_info` - Template information containing TOML content to parse
+///
+/// # Returns
+/// * `Ok(TemplateConfig)` - Successfully parsed template configuration
+/// * `Err(toml::de::Error)` - Error parsing TOML content
 pub fn parse_template(template_info: &TemplateInfo) -> Result<TemplateConfig, toml::de::Error> {
     toml::from_str(template_info.content)
 }

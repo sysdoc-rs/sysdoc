@@ -33,6 +33,10 @@ pub struct ImageSource {
 
 impl ImageSource {
     /// Load the image data into memory
+    ///
+    /// # Returns
+    /// * `Ok(())` - Successfully loaded image data into memory
+    /// * `Err(std::io::Error)` - Error reading the image file
     pub fn load(&mut self) -> std::io::Result<()> {
         self.data = Some(std::fs::read(&self.absolute_path)?);
         self.loaded = true;
@@ -52,6 +56,12 @@ pub enum ImageFormat {
 
 impl ImageFormat {
     /// Determine format from file extension
+    ///
+    /// # Parameters
+    /// * `path` - Path to the image file
+    ///
+    /// # Returns
+    /// * `ImageFormat` - Detected image format based on file extension
     pub fn from_path(path: &std::path::Path) -> Self {
         let extension = path
             .extension()

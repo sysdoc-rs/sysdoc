@@ -3,11 +3,14 @@
 //! Converts pulldown-cmark's event stream into structured blocks with formatted text runs.
 
 use super::blocks::{ListItem, MarkdownBlock};
+use super::error::SourceModelError;
+use super::image::ImageFormat;
 use super::markdown_source::MarkdownSection;
+use super::section_number::SectionNumber;
 use super::text_run::{TextFormatting, TextRun};
 use super::types::Alignment;
 use pulldown_cmark::{Event, Tag, TagEnd};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Parser state for converting markdown events to blocks
 pub struct MarkdownParser {
@@ -35,8 +38,15 @@ pub struct MarkdownParser {
     /// Completed sections
     sections: Vec<MarkdownSection>,
 
-    /// CSV table references found
-    table_refs: Vec<PathBuf>,
+    /// Document root directory for resolving relative paths
+    document_root: PathBuf,
+
+    /// File section number (base for calculating section numbers)
+    file_section_number: SectionNumber,
+
+    /// Heading counters at each level (1-indexed, for h1 through h6)
+    /// `heading_counters[0]` = count of h1 headings, `heading_counters[1]` = count of h2 headings, etc.
+    heading_counters: [u32; 6],
 }
 
 /// Context for building a list
@@ -75,7 +85,14 @@ struct SectionBuilder {
 
 impl MarkdownParser {
     /// Create a new parser
-    pub fn new() -> Self {
+    ///
+    /// # Parameters
+    /// * `document_root` - Root directory of the document for resolving relative paths
+    /// * `file_section_number` - Section number of the markdown file (from filename)
+    ///
+    /// # Returns
+    /// * `MarkdownParser` - A new parser with empty state
+    pub fn new(document_root: PathBuf, file_section_number: SectionNumber) -> Self {
         Self {
             formatting: TextFormatting::new(),
             current_runs: Vec::new(),
@@ -85,13 +102,33 @@ impl MarkdownParser {
             blockquote_stack: Vec::new(),
             current_section: None,
             sections: Vec::new(),
-            table_refs: Vec::new(),
+            document_root,
+            file_section_number,
+            heading_counters: [0; 6],
         }
     }
 
     /// Parse markdown content into sections
-    pub fn parse(content: &str) -> (Vec<MarkdownSection>, Vec<PathBuf>) {
-        let mut parser = Self::new();
+    ///
+    /// # Parameters
+    /// * `content` - Raw markdown content to parse
+    /// * `document_root` - Root directory of the document for resolving relative image paths
+    /// * `file_section_number` - Section number of the markdown file (from filename)
+    ///
+    /// # Returns
+    /// * `Ok(Vec<MarkdownSection>)` - Parsed sections with embedded CSV table blocks
+    /// * `Err(SourceModelError)` - Validation error (e.g., missing or invalid h1 heading)
+    ///
+    /// # Validation Rules
+    /// * Source markdown must contain at least one heading
+    /// * The first heading must be level 1 (h1)
+    /// * Only the first heading may be level 1 (all subsequent headings must be h2+)
+    pub fn parse(
+        content: &str,
+        document_root: &Path,
+        file_section_number: &SectionNumber,
+    ) -> Result<Vec<MarkdownSection>, SourceModelError> {
+        let mut parser = Self::new(document_root.to_path_buf(), file_section_number.clone());
         let md_parser = pulldown_cmark::Parser::new(content);
 
         for event in md_parser {
@@ -101,7 +138,49 @@ impl MarkdownParser {
         // Finalize any remaining content
         parser.finalize();
 
-        (parser.sections, parser.table_refs)
+        // Validate heading structure
+        Self::validate_heading_structure(&parser.sections)?;
+
+        Ok(parser.sections)
+    }
+
+    /// Validate that the heading structure follows sysdoc requirements
+    ///
+    /// # Parameters
+    /// * `sections` - Parsed sections to validate
+    ///
+    /// # Returns
+    /// * `Ok(())` - Heading structure is valid
+    /// * `Err(SourceModelError)` - Validation failed
+    ///
+    /// # Validation Rules
+    /// * At least one section must exist (with h1 heading)
+    /// * The first section must have heading level 1
+    /// * All subsequent sections must NOT have heading level 1
+    fn validate_heading_structure(sections: &[MarkdownSection]) -> Result<(), SourceModelError> {
+        // Rule 1: Must have at least one heading
+        if sections.is_empty() {
+            return Err(SourceModelError::NoHeadingFound);
+        }
+
+        // Rule 2: First heading must be level 1
+        if sections[0].heading_level != 1 {
+            return Err(SourceModelError::FirstHeadingNotLevel1 {
+                actual_level: sections[0].heading_level,
+            });
+        }
+
+        // Rule 3: Count h1 headings (should be exactly 1)
+        let h1_count = sections
+            .iter()
+            .filter(|section| section.heading_level == 1)
+            .count();
+
+        if h1_count > 1 {
+            return Err(SourceModelError::MultipleLevel1Headings { count: h1_count });
+        }
+
+        Ok(())
     }
 
     /// Process a single markdown event
@@ -199,17 +278,14 @@ impl MarkdownParser {
             } => {
                 let url = dest_url.to_string();
 
-                // Check if this is a CSV table reference
+                // Check if this is a CSV table reference - handle as a block
                 if url.ends_with(".csv") {
-                    self.table_refs.push(PathBuf::from(&url));
-                }
-
-                self.formatting.link_url = Some(url);
-                self.formatting.link_title = if title.is_empty() {
-                    None
+                    self.handle_csv_table(url, title.to_string());
                 } else {
-                    Some(title.to_string())
-                };
+                    // Regular link - track formatting
+                    self.formatting.link_url = Some(url);
+                    self.formatting.link_title = (!title.is_empty()).then(|| title.to_string());
+                }
             }
             Tag::Image {
                 dest_url, title, ..
@@ -358,9 +434,8 @@ impl MarkdownParser {
     fn start_heading(&mut self, level: usize) {
         // If there's a current section, save it
         if let Some(section) = self.current_section.take() {
-            let table_refs = std::mem::take(&mut self.table_refs);
-            self.sections
-                .push(Self::finalize_section_static(section, table_refs));
+            let finalized = self.finalize_section(section);
+            self.sections.push(finalized);
         }
 
         // Start a new section
@@ -438,13 +513,58 @@ impl MarkdownParser {
 
         self.current_runs.clear();
 
+        // Resolve absolute path and check if file exists
+        let path = PathBuf::from(&url);
+        let absolute_path = self.document_root.join(&path);
+        let exists = absolute_path.exists();
+        let format = ImageFormat::from_path(&path);
+
         let block = MarkdownBlock::Image {
-            path: PathBuf::from(url),
+            path,
+            absolute_path,
             alt_text,
             title,
+            format,
+            exists,
         };
 
         self.add_block(block);
+    }
+
+    /// Handle CSV table reference
+    fn handle_csv_table(&mut self, url: String, _title: String) {
+        // Clear any accumulated text runs (link text is not needed for CSV tables)
+        self.current_runs.clear();
+
+        // Resolve absolute path and check if file exists
+        let path = PathBuf::from(&url);
+        let absolute_path = self.document_root.join(&path);
+        let exists = absolute_path.exists();
+
+        // Load and parse CSV data if the file exists
+        let data = exists
+            .then(|| Self::load_csv_data(&absolute_path))
+            .flatten();
+
+        let block = MarkdownBlock::CsvTable {
+            path,
+            absolute_path,
+            exists,
+            data,
+        };
+
+        self.add_block(block);
+    }
+
+    /// Load CSV data from a file
+    fn load_csv_data(path: &std::path::Path) -> Option<Vec<Vec<String>>> {
+        let mut reader = csv::Reader::from_path(path).ok()?;
+        let rows: Vec<Vec<String>> = reader
+            .records()
+            .flatten()
+            .map(|record| record.iter().map(String::from).collect())
+            .collect();
+        Some(rows)
     }
 
     /// Finish a list
@@ -497,7 +617,7 @@ impl MarkdownParser {
             return;
         };
 
-        let block = MarkdownBlock::Table {
+        let block = MarkdownBlock::InlineTable {
             alignments: table_ctx.alignments,
             headers: table_ctx.headers,
             rows: table_ctx.rows,
@@ -543,38 +663,1123 @@ impl MarkdownParser {
     fn finalize(&mut self) {
         // Finish any pending section
         if let Some(section) = self.current_section.take() {
-            let table_refs = std::mem::take(&mut self.table_refs);
-            self.sections
-                .push(Self::finalize_section_static(section, table_refs));
+            let finalized = self.finalize_section(section);
+            self.sections.push(finalized);
         }
 
-        // If there are blocks but no sections, create a default section
-        if !self.current_blocks.is_empty() && self.sections.is_empty() {
-            self.sections.push(MarkdownSection {
-                heading_level: 1,
-                heading_text: String::new(),
-                content: std::mem::take(&mut self.current_blocks),
-                table_refs: std::mem::take(&mut self.table_refs),
-            });
-        }
+        // Note: We do NOT create default sections for content without headings.
+        // sysdoc requires all source markdown files to have an explicit h1 heading.
+        // Content without headings will fail validation.
     }
 
-    /// Convert a section builder into a MarkdownSection (static version)
-    fn finalize_section_static(
-        section: SectionBuilder,
-        table_refs: Vec<PathBuf>,
-    ) -> MarkdownSection {
+    /// Convert a section builder into a MarkdownSection with calculated section number
+    ///
+    /// Calculates the section number by combining:
+    /// 1. The file's section number (with .00 stripped if present) - used directly for h1
+    /// 2. For h2+, incremental counters are appended to the base number
+    ///
+    /// The h1 heading uses the file section number directly because the filename already
+    /// encodes the section number. For example:
+    /// - File "01.00_scope.md" with h1 → section 1
+    /// - File "01.02_overview.md" with h1 → section 1.2
+    /// - File "01.02_overview.md" with h2 (first) → section 1.2.1
+    /// - File "01.02_overview.md" with h2 (second) → section 1.2.2
+    fn finalize_section(&mut self, section: SectionBuilder) -> MarkdownSection {
+        // Build section number
+        // Start with file section number (stripping .00 if present)
+        let base_number = if self.file_section_number.is_parent_marker() {
+            self.file_section_number.without_parent_marker().unwrap()
+        } else {
+            self.file_section_number.clone()
+        };
+
+        let section_number = if section.level == 1 {
+            // For h1, use the file section number directly
+            // The filename already encodes the section number
+            base_number
+        } else {
+            // For h2+, increment counter for this level and add to base
+            let level_index = section.level.saturating_sub(1).min(5); // h2=1, h3=2, etc.
+            self.heading_counters[level_index] += 1;
+
+            // Reset all deeper level counters
+            for i in (level_index + 1)..6 {
+                self.heading_counters[i] = 0;
+            }
+
+            // Add heading level counters (from h2 onwards, skip h1 counter at index 0)
+            let additional: Vec<u32> = self.heading_counters[1..=level_index].to_vec();
+            base_number.extend(&additional).unwrap_or_else(|err| {
+                // Log warning when depth is exceeded
+                log::warn!(
+                    "Section number depth exceeded for heading '{}': {}. Using fallback.",
+                    section.heading_text,
+                    err
+                );
+                base_number.clone()
+            })
+        };
+
         MarkdownSection {
             heading_level: section.level,
             heading_text: section.heading_text,
+            section_number,
             content: section.blocks,
-            table_refs,
         }
     }
 }
 
-impl Default for MarkdownParser {
-    fn default() -> Self {
-        Self::new()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pulldown_cmark::{Event, Parser, Tag};
+
+    // ============================================================================
+    // Tests documenting pulldown_cmark behavior
+    // ============================================================================
+
+    #[test]
+    fn test_standalone_image_wrapped_in_paragraph() {
+        // Arrange: Markdown with only an image
+        let markdown = "![alt text](image.png)";
+
+        // Act: Parse markdown into events
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Standalone images are wrapped in paragraph tags
+        assert_eq!(events.len(), 5);
+        assert!(matches!(events[0], Event::Start(Tag::Paragraph)));
+        assert!(matches!(events[1], Event::Start(Tag::Image { .. })));
+        assert!(matches!(events[2], Event::Text(_)));
+        assert!(matches!(events[3], Event::End(_))); // End(Image)
+        assert!(matches!(events[4], Event::End(_))); // End(Paragraph)
+    }
+
+    #[test]
+    fn test_image_with_text_in_one_paragraph() {
+        // Arrange: Image surrounded by text
+        let markdown = "Some text ![alt](image.png) more text";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Everything is in one paragraph
+        assert!(matches!(events.first(), Some(Event::Start(Tag::Paragraph))));
+        assert!(matches!(events.last(), Some(Event::End(_))));
+
+        // Verify it contains an image tag
+        let has_image = events
+            .iter()
+            .any(|e| matches!(e, Event::Start(Tag::Image { .. })));
+        assert!(has_image, "Should contain an image within the paragraph");
+    }
+
+    #[test]
+    fn test_heading_not_wrapped_in_paragraph() {
+        // Arrange: Markdown heading
+        let markdown = "# Heading";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Heading is NOT wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::Heading { .. })));
+        assert!(matches!(events[1], Event::Text(_)));
+        assert!(matches!(events[2], Event::End(_)));
+    }
+
+    #[test]
+    fn test_blockquote_not_wrapped_in_paragraph() {
+        // Arrange: Markdown blockquote
+        let markdown = "> Quote";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: BlockQuote is NOT wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::BlockQuote(_))));
+    }
+
+    #[test]
+    fn test_plain_text_wrapped_in_paragraph() {
+        // Arrange: Plain text
+        let markdown = "Plain text";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Plain text IS wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::Paragraph)));
+        assert!(matches!(events[1], Event::Text(_)));
+        assert!(matches!(events[2], Event::End(_)));
+    }
+
+    #[test]
+    fn test_link_wrapped_in_paragraph() {
+        // Arrange: Markdown link
+        let markdown = "[link](url)";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Links ARE wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::Paragraph)));
+        assert!(matches!(events[1], Event::Start(Tag::Link { .. })));
+    }
+
+    #[test]
+    fn test_inline_code_wrapped_in_paragraph() {
+        // Arrange: Inline code
+        let markdown = "`inline code`";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Inline code IS wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::Paragraph)));
+        assert!(matches!(events[1], Event::Code(_)));
+        assert!(matches!(events[2], Event::End(_)));
+    }
+
+    #[test]
+    fn test_bold_text_wrapped_in_paragraph() {
+        // Arrange: Bold text
+        let markdown = "**bold** text";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Bold text IS wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::Paragraph)));
+        assert!(matches!(events[1], Event::Start(Tag::Strong)));
+    }
+
+    #[test]
+    fn test_list_not_wrapped_in_paragraph() {
+        // Arrange: Markdown list
+        let markdown = "- Item 1\n- Item 2";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: List is NOT wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::List(_))));
+    }
+
+    #[test]
+    fn test_code_block_not_wrapped_in_paragraph() {
+        // Arrange: Fenced code block
+        let markdown = "```rust\ncode\n```";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Code block is NOT wrapped in paragraph
+        assert!(matches!(events[0], Event::Start(Tag::CodeBlock(_))));
+    }
+
+    #[test]
+    fn test_horizontal_rule_not_wrapped() {
+        // Arrange: Horizontal rule
+        let markdown = "---";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Rule is a standalone event
+        assert!(matches!(events[0], Event::Rule));
+    }
+
+    #[test]
+    fn test_multiple_images_in_single_paragraph() {
+        // Arrange: Three images with text between them
+        let markdown = "![img1](a.png) text ![img2](b.png) more ![img3](c.png)";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: All images are in one paragraph
+        assert!(matches!(events[0], Event::Start(Tag::Paragraph)));
+
+        let image_count = events
+            .iter()
+            .filter(|e| matches!(e, Event::Start(Tag::Image { .. })))
+            .count();
+        assert_eq!(image_count, 3);
+
+        assert!(matches!(events[events.len() - 1], Event::End(_)));
+    }
+
+    #[test]
+    fn test_image_in_list_item() {
+        // Arrange: List with image in item
+        let markdown = "- ![image](img.png)";
+
+        // Act: Parse markdown
+        let events: Vec<Event> = Parser::new(markdown).collect();
+
+        // Assert: Verify list structure with image
+        assert!(matches!(events[0], Event::Start(Tag::List(_))));
+        assert!(matches!(events[1], Event::Start(Tag::Item)));
+
+        let has_image = events
+            .iter()
+            .any(|e| matches!(e, Event::Start(Tag::Image { .. })));
+        assert!(has_image, "List item should contain image");
+    }
+
+    // ============================================================================
+    // Tests documenting our parser behavior
+    // ============================================================================
+
+    /// Helper to create a test section number
+    fn test_section_number() -> SectionNumber {
+        SectionNumber::parse("01.00").unwrap()
+    }
+
+    // ============================================================================
+    // Section number calculation tests
+    // ============================================================================
+
+    #[test]
+    fn test_section_number_calculation_basic() {
+        // Arrange: File "01.02.md" with one h1 heading
+        let markdown = "# First Heading\n\nContent here.";
+        let file_section = SectionNumber::parse("01.02").unwrap();
+
+        // Act: Parse the markdown
+        let sections = MarkdownParser::parse(markdown, &PathBuf::from("."), &file_section).unwrap();
+
+        // Assert: h1 uses file section number directly (filename encodes section number)
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].section_number.to_string(), "1.2");
+    }
+
+    #[test]
+    fn test_section_number_calculation_multiple_headings() {
+        // Arrange: File "01.02.md" with multiple headings
+        let markdown = r#"# First Heading
+
+Content 1
+
+## Second Level 1
+
+Content 2
+
+## Second Level 2
+
+Content 3"#;
+        let file_section = SectionNumber::parse("01.02").unwrap();
+
+        // Act: Parse the markdown
+        let sections = MarkdownParser::parse(markdown, &PathBuf::from("."), &file_section).unwrap();
+
+        // Assert: h1 uses file number directly, h2+ add counters
+        assert_eq!(sections.len(), 3);
+        assert_eq!(sections[0].section_number.to_string(), "1.2"); // h1 = file section
+        assert_eq!(sections[1].section_number.to_string(), "1.2.1"); // First h2
+        assert_eq!(sections[2].section_number.to_string(), "1.2.2"); // Second h2
+    }
+
+    #[test]
+    fn test_section_number_parent_marker_stripped() {
+        // Arrange: File "01.02.00.md" (parent marker) with one h1 heading
+        let markdown = "# Heading\n\nContent.";
+        let file_section = SectionNumber::parse("01.02.00").unwrap();
+
+        // Act: Parse the markdown
+        let sections = MarkdownParser::parse(markdown, &PathBuf::from("."), &file_section).unwrap();
+
+        // Assert: .00 should be stripped, h1 uses file section number directly
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].section_number.to_string(), "1.2");
+    }
+
+    #[test]
+    fn test_section_number_deep_nesting() {
+        // Arrange: File "01.md" with nested headings up to h5 (to stay within max depth of 6)
+        let markdown = r#"# Main Heading
+
+## H2
+
+### H3
+
+#### H4
+
+##### H5"#;
+        let file_section = SectionNumber::parse("01").unwrap();
+
+        // Act: Parse the markdown
+        let sections = MarkdownParser::parse(markdown, &PathBuf::from("."), &file_section).unwrap();
+
+        // Assert: h1 = file section, h2+ add counters
+        assert_eq!(sections.len(), 5);
+        assert_eq!(sections[0].section_number.to_string(), "1"); // h1 = file section
+        assert_eq!(sections[1].section_number.to_string(), "1.1"); // h2
+        assert_eq!(sections[2].section_number.to_string(), "1.1.1"); // h3
+        assert_eq!(sections[3].section_number.to_string(), "1.1.1.1"); // h4
+        assert_eq!(sections[4].section_number.to_string(), "1.1.1.1.1"); // h5
+    }
+
+    #[test]
+    fn test_section_number_max_depth_enforced() {
+        // Arrange: File "01.02.md" (depth 2) with h6 heading would exceed max depth of 6
+        // h1 = "1.2" (depth 2), h2 = "1.2.1" (depth 3), ..., h6 would need depth 7
+        let markdown = r#"# H1
+
+## H2
+
+### H3
+
+#### H4
+
+##### H5
+
+###### H6"#;
+        let file_section = SectionNumber::parse("01.02").unwrap();
+
+        // Act: Parse the markdown
+        let sections = MarkdownParser::parse(markdown, &PathBuf::from("."), &file_section).unwrap();
+
+        // Assert: h6 exceeds max depth and falls back to base file number
+        assert_eq!(sections.len(), 6);
+        assert_eq!(sections[0].section_number.to_string(), "1.2"); // h1 = file section
+        assert_eq!(sections[1].section_number.to_string(), "1.2.1"); // h2
+        assert_eq!(sections[2].section_number.to_string(), "1.2.1.1"); // h3
+        assert_eq!(sections[3].section_number.to_string(), "1.2.1.1.1"); // h4
+        assert_eq!(sections[4].section_number.to_string(), "1.2.1.1.1.1"); // h5 (depth 6, at max)
+                                                                           // h6 would exceed depth, so it falls back to file number
+        assert_eq!(sections[5].section_number.to_string(), "1.2");
+    }
+
+    #[test]
+    fn test_section_number_counter_reset() {
+        // Arrange: File "01.md" with h2 and h3 headings to test counter reset
+        let markdown = r#"# Main Heading
+
+## First H2
+
+### H3 under first H2
+
+### Another H3
+
+## Second H2
+
+### H3 under second H2"#;
+        let file_section = SectionNumber::parse("01").unwrap();
+
+        // Act: Parse the markdown
+        let sections = MarkdownParser::parse(markdown, &PathBuf::from("."), &file_section).unwrap();
+
+        // Assert: Counters should reset when returning to higher level
+        assert_eq!(sections.len(), 6);
+        assert_eq!(sections[0].section_number.to_string(), "1"); // h1 = file section
+        assert_eq!(sections[1].section_number.to_string(), "1.1"); // First h2
+        assert_eq!(sections[2].section_number.to_string(), "1.1.1"); // First h3
+        assert_eq!(sections[3].section_number.to_string(), "1.1.2"); // Second h3
+        assert_eq!(sections[4].section_number.to_string(), "1.2"); // Second h2 (h3 counter reset)
+        assert_eq!(sections[5].section_number.to_string(), "1.2.1"); // h3 under second h2
+    }
+
+    #[test]
+    fn test_our_parser_extracts_images_from_markdown() {
+        // Arrange: Markdown with multiple images
+        let markdown = r#"
+# Section 1
+
+Some text with an ![inline image](inline.png) here.
+
+![standalone image](standalone.png)
+
+More text after.
+"#;
+
+        // Act: Parse with our parser
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Verify section structure
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].heading_text, "Section 1");
+
+        // Count image blocks (our parser may extract images separately)
+        let image_count = sections[0]
+            .content
+            .iter()
+            .filter(|block| matches!(block, MarkdownBlock::Image { .. }))
+            .count();
+
+        assert!(image_count >= 1, "Should extract at least one image");
+    }
+
+    // ============================================================================
+    // Unit tests for MarkdownParser::parse
+    // ============================================================================
+
+    // ============================================================================
+    // Validation tests - heading structure
+    // ============================================================================
+
+    #[test]
+    fn test_parse_valid_single_h1() {
+        // Arrange: Valid markdown with single h1
+        let markdown = "# Main Heading\n\nContent here.";
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should succeed
+        assert!(result.is_ok());
+        let sections = result.unwrap();
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].heading_level, 1);
+    }
+
+    #[test]
+    fn test_parse_error_no_heading() {
+        // Arrange: Markdown with no headings
+        let markdown = "Just a paragraph with no headings.";
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should fail with NoHeadingFound error
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), SourceModelError::NoHeadingFound);
+    }
+
+    #[test]
+    fn test_parse_error_first_heading_not_h1() {
+        // Arrange: Markdown where first heading is h2
+        let markdown = "## Second Level Heading\n\nContent here.";
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should fail with FirstHeadingNotLevel1 error
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SourceModelError::FirstHeadingNotLevel1 { actual_level } => {
+                assert_eq!(actual_level, 2);
+            }
+            _ => panic!("Expected FirstHeadingNotLevel1 error"),
+        }
+    }
+
+    #[test]
+    fn test_parse_error_multiple_h1_headings() {
+        // Arrange: Markdown with multiple h1 headings
+        let markdown = r#"# First Heading
+
+Content 1
+
+# Second Heading
+
+Content 2"#;
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should fail with MultipleLevel1Headings error
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SourceModelError::MultipleLevel1Headings { count } => {
+                assert_eq!(count, 2);
+            }
+            _ => panic!("Expected MultipleLevel1Headings error"),
+        }
+    }
+
+    #[test]
+    fn test_parse_valid_h1_with_h2_subsections() {
+        // Arrange: Valid markdown with h1 followed by h2 subsections
+        let markdown = r#"# Main Heading
+
+Introduction content.
+
+## Subsection 1
+
+Content 1
+
+## Subsection 2
+
+Content 2"#;
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should succeed with 3 sections
+        assert!(result.is_ok());
+        let sections = result.unwrap();
+        assert_eq!(sections.len(), 3);
+        assert_eq!(sections[0].heading_level, 1);
+        assert_eq!(sections[1].heading_level, 2);
+        assert_eq!(sections[2].heading_level, 2);
+    }
+
+    #[test]
+    fn test_parse_valid_deep_nesting() {
+        // Arrange: Valid markdown with deep heading nesting
+        let markdown = r#"# Main
+
+Content
+
+## Level 2
+
+More content
+
+### Level 3
+
+Deep content
+
+#### Level 4
+
+Very deep"#;
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should succeed with 4 sections
+        assert!(result.is_ok());
+        let sections = result.unwrap();
+        assert_eq!(sections.len(), 4);
+        assert_eq!(sections[0].heading_level, 1);
+        assert_eq!(sections[1].heading_level, 2);
+        assert_eq!(sections[2].heading_level, 3);
+        assert_eq!(sections[3].heading_level, 4);
+    }
+
+    // ============================================================================
+    // Existing parser tests (updated to use .unwrap())
+    // ============================================================================
+
+    #[test]
+    fn test_parse_simple_paragraph() {
+        // Arrange: Simple text paragraph with h1
+        let markdown = "# Heading\n\nThis is a simple paragraph.";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create one section with one paragraph
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].content.len(), 1);
+        assert!(matches!(
+            sections[0].content[0],
+            MarkdownBlock::Paragraph(_)
+        ));
+    }
+
+    #[test]
+    fn test_parse_multiple_paragraphs() {
+        // Arrange: Two paragraphs separated by blank line
+        let markdown = "# Heading
+
+First paragraph.
+
+Second paragraph.";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create one section with two paragraphs
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].content.len(), 2);
+        assert!(matches!(
+            sections[0].content[0],
+            MarkdownBlock::Paragraph(_)
+        ));
+        assert!(matches!(
+            sections[0].content[1],
+            MarkdownBlock::Paragraph(_)
+        ));
+    }
+
+    #[test]
+    fn test_parse_single_heading() {
+        // Arrange: Markdown with one heading
+        let markdown = "# Main Heading\n\nSome content.";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create one section with heading
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].heading_level, 1);
+        assert_eq!(sections[0].heading_text, "Main Heading");
+        assert_eq!(sections[0].content.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_multiple_headings_create_sections() {
+        // Arrange: Markdown with three headings (one h1, two h2)
+        let markdown = r#"# First Heading
+
+Content 1
+
+## Second Heading
+
+Content 2
+
+## Third Heading
+
+Content 3"#;
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create three sections
+        assert_eq!(sections.len(), 3);
+        assert_eq!(sections[0].heading_text, "First Heading");
+        assert_eq!(sections[0].heading_level, 1);
+        assert_eq!(sections[1].heading_text, "Second Heading");
+        assert_eq!(sections[1].heading_level, 2);
+        assert_eq!(sections[2].heading_text, "Third Heading");
+        assert_eq!(sections[2].heading_level, 2);
+    }
+
+    #[test]
+    fn test_parse_unordered_list() {
+        // Arrange: Simple unordered list
+        let markdown = "# List\n\n- Item 1\n- Item 2\n- Item 3";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create one list block
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].content.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::List { start, items } => {
+                assert_eq!(start, &None);
+                assert_eq!(items.len(), 3);
+            }
+            _ => panic!("Expected List block"),
+        }
+    }
+
+    #[test]
+    fn test_parse_ordered_list() {
+        // Arrange: Ordered list with explicit numbering
+        let markdown = "# List\n\n1. First\n2. Second\n3. Third";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create ordered list starting at 1
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].content.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::List { start, items } => {
+                assert_eq!(start, &Some(1));
+                assert_eq!(items.len(), 3);
+            }
+            _ => panic!("Expected List block"),
+        }
+    }
+
+    #[test]
+    fn test_parse_fenced_code_block() {
+        // Arrange: Fenced code block with language
+        let markdown = "# Code\n\n```rust\nfn main() {\n    println!(\"Hello\");\n}\n```";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Code blocks without headings create a default section
+        // But code blocks might not be implemented yet, so check what we got
+        if sections.is_empty() {
+            // Code block parsing not yet implemented
+            return;
+        }
+
+        assert_eq!(sections.len(), 1);
+
+        if sections[0].content.is_empty() {
+            // Code block parsing not yet fully implemented
+            return;
+        }
+
+        match &sections[0].content[0] {
+            MarkdownBlock::CodeBlock {
+                language,
+                code,
+                fenced: _,
+            } => {
+                assert_eq!(language, &Some("rust".to_string()));
+                assert!(code.contains("fn main"));
+            }
+            _ => panic!("Expected CodeBlock, got {:?}", sections[0].content[0]),
+        }
+    }
+
+    #[test]
+    fn test_parse_blockquote() {
+        // Arrange: Simple blockquote
+        let markdown = "# Quote\n\n> This is a quote\n> with multiple lines";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create blockquote block
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].content.len(), 1);
+        assert!(matches!(
+            sections[0].content[0],
+            MarkdownBlock::BlockQuote(_)
+        ));
+    }
+
+    #[test]
+    fn test_parse_horizontal_rule() {
+        // Arrange: Horizontal rule between paragraphs
+        let markdown = "# Rule\n\nBefore rule\n\n---\n\nAfter rule";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create paragraph, rule, paragraph
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].content.len(), 3);
+        assert!(matches!(
+            sections[0].content[0],
+            MarkdownBlock::Paragraph(_)
+        ));
+        assert!(matches!(sections[0].content[1], MarkdownBlock::Rule));
+        assert!(matches!(
+            sections[0].content[2],
+            MarkdownBlock::Paragraph(_)
+        ));
+    }
+
+    #[test]
+    fn test_parse_bold_text() {
+        // Arrange: Paragraph with bold text
+        let markdown = "# Text\n\nThis is **bold** text.";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should parse with formatted runs
+        assert_eq!(sections.len(), 1);
+        assert_eq!(sections[0].content.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::Paragraph(runs) => {
+                assert!(runs.len() >= 2);
+                let bold_run = runs.iter().find(|r| r.bold);
+                assert!(bold_run.is_some(), "Should have at least one bold run");
+            }
+            _ => panic!("Expected Paragraph"),
+        }
+    }
+
+    #[test]
+    fn test_parse_italic_text() {
+        // Arrange: Paragraph with italic text
+        let markdown = "# Text\n\nThis is *italic* text.";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should parse with italic formatting
+        assert_eq!(sections.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::Paragraph(runs) => {
+                let italic_run = runs.iter().find(|r| r.italic);
+                assert!(italic_run.is_some(), "Should have at least one italic run");
+            }
+            _ => panic!("Expected Paragraph"),
+        }
+    }
+
+    #[test]
+    fn test_parse_inline_code() {
+        // Arrange: Paragraph with inline code
+        let markdown = "# Code\n\nUse the `println!` macro.";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should parse with code formatting
+        assert_eq!(sections.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::Paragraph(runs) => {
+                let code_run = runs.iter().find(|r| r.code);
+                assert!(code_run.is_some(), "Should have at least one code run");
+            }
+            _ => panic!("Expected Paragraph"),
+        }
+    }
+
+    #[test]
+    fn test_parse_link() {
+        // Arrange: Paragraph with link
+        let markdown = "# Link\n\nVisit [Rust](https://rust-lang.org) website.";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should parse with link formatting
+        assert_eq!(sections.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::Paragraph(runs) => {
+                let link_run = runs.iter().find(|r| r.link_url.is_some());
+                assert!(link_run.is_some(), "Should have at least one link run");
+                assert_eq!(
+                    link_run.unwrap().link_url.as_ref().unwrap(),
+                    "https://rust-lang.org"
+                );
+            }
+            _ => panic!("Expected Paragraph"),
+        }
+    }
+
+    #[test]
+    fn test_parse_csv_table_reference() {
+        // Arrange: Link to CSV file
+        let markdown = "# Table\n\n[Table Data](data.csv)";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create a CsvTable block
+        assert_eq!(sections.len(), 1);
+
+        // CSV tables are now embedded as CsvTable blocks
+        let csv_count = sections[0]
+            .content
+            .iter()
+            .filter(|block| matches!(block, MarkdownBlock::CsvTable { .. }))
+            .count();
+        assert_eq!(csv_count, 1);
+
+        // Check that the path is correct
+        match &sections[0].content[0] {
+            MarkdownBlock::CsvTable { path, .. } => {
+                assert_eq!(path, &PathBuf::from("data.csv"));
+            }
+            _ => panic!("Expected CsvTable block"),
+        }
+    }
+
+    #[test]
+    fn test_parse_multiple_csv_references() {
+        // Arrange: Multiple CSV links
+        let markdown = r#"# Data Section
+
+First table: [table1](table1.csv)
+
+Second table: [table2](table2.csv)"#;
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create CsvTable blocks for each CSV
+        assert_eq!(sections.len(), 1);
+
+        // CSV tables are now embedded as CsvTable blocks
+        let csv_tables: Vec<&PathBuf> = sections[0]
+            .content
+            .iter()
+            .filter_map(|block| match block {
+                MarkdownBlock::CsvTable { path, .. } => Some(path),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(csv_tables.len(), 2);
+        assert!(csv_tables.contains(&&PathBuf::from("table1.csv")));
+        assert!(csv_tables.contains(&&PathBuf::from("table2.csv")));
+    }
+
+    #[test]
+    fn test_parse_image_block() {
+        // Arrange: Standalone image
+        let markdown = "# Image\n\n![Alt text](image.png)";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should extract image
+        assert_eq!(sections.len(), 1);
+
+        // Images wrapped in paragraphs by pulldown_cmark may create multiple blocks
+        // Find the image block
+        let image_block = sections[0]
+            .content
+            .iter()
+            .find(|block| matches!(block, MarkdownBlock::Image { .. }));
+
+        assert!(image_block.is_some(), "Should contain an image block");
+
+        match image_block.unwrap() {
+            MarkdownBlock::Image {
+                path,
+                absolute_path: _,
+                alt_text: _,
+                title: _,
+                format: _,
+                exists: _,
+            } => {
+                // Verify path is correct
+                assert_eq!(path, &PathBuf::from("image.png"));
+                // Note: alt_text handling may vary based on when image is extracted
+                // from the event stream (before or after text events are processed)
+                // absolute_path will be "./image.png" since we use "." as document root in tests
+                // exists will be false unless the test image actually exists
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn test_parse_empty_content() {
+        // Arrange: Empty string (this test now expects an error since no heading)
+        let markdown = "";
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should fail with NoHeadingFound error
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), SourceModelError::NoHeadingFound);
+    }
+
+    #[test]
+    fn test_parse_whitespace_only() {
+        // Arrange: Only whitespace (this test now expects an error since no heading)
+        let markdown = "   \n\n   \n";
+
+        // Act: Parse the markdown
+        let result = MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number());
+
+        // Assert: Should fail with NoHeadingFound error
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), SourceModelError::NoHeadingFound);
+    }
+
+    #[test]
+    fn test_parse_mixed_content() {
+        // Arrange: Complex markdown with various elements
+        let markdown = r#"# Introduction
+
+This is a **bold** paragraph with *italic* and `code`.
+
+## Features
+
+- Feature 1
+- Feature 2
+
+Here's a code example:
+
+```rust
+fn example() {}
+```
+
+> Important note
+
+---
+
+End of document."#;
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create two sections with various blocks
+        assert_eq!(sections.len(), 2);
+        assert_eq!(sections[0].heading_text, "Introduction");
+        assert_eq!(sections[1].heading_text, "Features");
+        assert!(sections[0].content.len() >= 1);
+        assert!(sections[1].content.len() >= 4);
+    }
+
+    #[test]
+    fn test_parse_nested_list() {
+        // Arrange: List with nested items
+        let markdown = r#"# List
+
+- Item 1
+  - Nested 1a
+  - Nested 1b
+- Item 2"#;
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should parse list structure
+        assert_eq!(sections.len(), 1);
+
+        // Nested lists may create multiple list blocks or nested structures
+        let list_count = sections[0]
+            .content
+            .iter()
+            .filter(|block| matches!(block, MarkdownBlock::List { .. }))
+            .count();
+
+        assert!(list_count >= 1, "Should contain at least one list block");
+    }
+
+    #[test]
+    fn test_parse_blockquote_with_content() {
+        // Arrange: Blockquote with formatted content
+        let markdown = "# Quote\n\n> This is **bold** in a quote\n> \n> Second paragraph";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should create blockquote with nested blocks
+        assert_eq!(sections.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::BlockQuote(blocks) => {
+                assert!(blocks.len() >= 1, "Blockquote should contain blocks");
+            }
+            _ => panic!("Expected BlockQuote"),
+        }
+    }
+
+    #[test]
+    fn test_parse_html_content() {
+        // Arrange: Raw HTML in markdown
+        let markdown = "# HTML\n\n<div>HTML content</div>";
+
+        // Act: Parse the markdown
+        let sections =
+            MarkdownParser::parse(markdown, &PathBuf::from("."), &test_section_number()).unwrap();
+
+        // Assert: Should preserve HTML
+        assert_eq!(sections.len(), 1);
+
+        match &sections[0].content[0] {
+            MarkdownBlock::Html(html) => {
+                assert!(html.contains("HTML content"));
+            }
+            _ => panic!("Expected Html block"),
+        }
     }
 }

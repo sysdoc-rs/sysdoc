@@ -14,7 +14,7 @@ echo "Running cargo build --release..."
 cargo build --release || { echo "ERROR: cargo build --release failed"; exit 1; }
 
 echo "Running cargo doc..."
-cargo doc --no-deps || { echo "ERROR: cargo doc failed"; exit 1; }
+cargo doc --no-deps --document-private-items || { echo "ERROR: cargo doc failed"; exit 1; }
 
 echo "Running cargo deny check..."
 cargo deny check || { echo "ERROR: cargo deny check failed"; exit 1; }

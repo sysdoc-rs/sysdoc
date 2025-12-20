@@ -44,6 +44,13 @@ pub enum FileTemplate {
 
 impl TemplateConfig {
     /// Load template configuration from a .toml file
+    ///
+    /// # Parameters
+    /// * `path` - Path to the template .toml file
+    ///
+    /// # Returns
+    /// * `Ok(TemplateConfig)` - Successfully loaded template configuration
+    /// * `Err(TemplateConfigError)` - Error reading or parsing the template file
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, TemplateConfigError> {
         let content = fs::read_to_string(&path).map_err(TemplateConfigError::IoError)?;
 
@@ -54,6 +61,13 @@ impl TemplateConfig {
     }
 
     /// Generate file content for a given file path
+    ///
+    /// # Parameters
+    /// * `file_path` - Relative path of the file within the template
+    ///
+    /// # Returns
+    /// * `Some(String)` - Generated file content for the specified path
+    /// * `None` - No file template found for the given path
     pub fn generate_file_content(&self, file_path: &str) -> Option<String> {
         self.files.get(file_path).map(|template| match template {
             FileTemplate::Simple { content } => content.clone(),

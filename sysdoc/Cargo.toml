@@ -18,7 +18,11 @@ toml = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 anyhow = { workspace = true }
-rayon = { version = "1.8", optional = true }
+thiserror = { workspace = true }
+itertools = { workspace = true }
+rayon = { version = "1.11", optional = true }
+docx-rust = { workspace = true }
+imagesize = { workspace = true }
 
 [dev-dependencies]
 pulldown-cmark = { workspace = true, features = ["default"] }
