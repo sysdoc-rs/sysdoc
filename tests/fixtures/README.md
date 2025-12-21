@@ -41,12 +41,24 @@ sysdoc build tests/fixtures/test-normal-text -f markdown -o output/
 
 The validation script builds all fixtures and validates them with OOXML Validator:
 
+**Linux/macOS (Bash):**
+
 ```bash
 # Install OOXML Validator (one-time setup)
 ./scripts/validate-docx.sh --install-validator
 
 # Run validation
 ./scripts/validate-docx.sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Install OOXML Validator (one-time setup)
+.\scripts\validate-docx.ps1 -InstallValidator
+
+# Run validation
+.\scripts\validate-docx.ps1
 ```
 
 This is also run automatically in CI.
@@ -70,5 +82,5 @@ Works on Windows, Linux, and macOS (requires .NET 8.0+).
    - Keep `docx_template_path = "../template.docx"`
 3. Add `src/01_test.md` with markdown testing the feature
 4. Add any required assets (images, CSV files)
-5. Add the test case name to `scripts/validate-docx.sh`
+5. Add the test case name to `scripts/validate-docx.sh` and `scripts/validate-docx.ps1`
 6. Add the test case to the integration test in `tests/integration_test.rs`
