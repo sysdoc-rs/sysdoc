@@ -47,16 +47,16 @@ if ($InstallValidator) {
 # Find OOXML-Validator binary
 function Find-Validator {
     # Check PATH first
-    $pathValidator = Get-Command "OOXML-Validator.exe" -ErrorAction SilentlyContinue
+    $pathValidator = Get-Command "OOXMLValidatorCLI.exe" -ErrorAction SilentlyContinue
     if ($pathValidator) {
         return $pathValidator.Source
     }
 
     # Check common install locations
     $locations = @(
-        (Join-Path $ValidatorInstallDir "OOXML-Validator.exe"),
-        (Join-Path $env:LOCALAPPDATA "ooxml-validator\OOXML-Validator.exe"),
-        ".\OOXML-Validator.exe"
+        (Join-Path $ValidatorInstallDir "OOXMLValidatorCLI.exe"),
+        (Join-Path $env:LOCALAPPDATA "ooxml-validator\OOXMLValidatorCLI.exe"),
+        ".\OOXMLValidatorCLI.exe"
     )
 
     foreach ($loc in $locations) {

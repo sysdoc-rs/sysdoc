@@ -62,7 +62,7 @@ if [[ "$1" == "--install-validator" ]]; then
     unzip -o /tmp/ooxml-validator.zip -d "$INSTALL_DIR"
 
     if [[ "$PLATFORM" != "win-x64" ]]; then
-        chmod +x "$INSTALL_DIR/OOXML-Validator"
+        chmod +x "$INSTALL_DIR/OOXMLValidatorCLI"
     fi
 
     echo ""
@@ -74,16 +74,16 @@ fi
 # Find OOXML-Validator binary
 find_validator() {
     # Check PATH first
-    if command -v OOXML-Validator &> /dev/null; then
-        echo "OOXML-Validator"
+    if command -v OOXMLValidatorCLI &> /dev/null; then
+        echo "OOXMLValidatorCLI"
         return 0
     fi
 
     # Check common install locations
     local locations=(
-        "$HOME/.local/bin/ooxml-validator/OOXML-Validator"
-        "/usr/local/bin/OOXML-Validator"
-        "./OOXML-Validator"
+        "$HOME/.local/bin/ooxml-validator/OOXMLValidatorCLI"
+        "/usr/local/bin/OOXMLValidatorCLI"
+        "./OOXMLValidatorCLI"
     )
 
     for loc in "${locations[@]}"; do

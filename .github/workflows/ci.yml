@@ -116,11 +116,11 @@ jobs:
 
     - name: Download OOXML-Validator
       run: |
-        if [ ! -f ~/.local/bin/ooxml-validator/OOXML-Validator ]; then
+        if [ ! -f ~/.local/bin/ooxml-validator/OOXMLValidatorCLI ]; then
           mkdir -p ~/.local/bin/ooxml-validator
           curl -sL "https://github.com/mikeebowen/OOXML-Validator/releases/download/v${OOXML_VALIDATOR_VERSION}/linux-x64.zip" -o /tmp/ooxml-validator.zip
           unzip -o /tmp/ooxml-validator.zip -d ~/.local/bin/ooxml-validator
-          chmod +x ~/.local/bin/ooxml-validator/OOXML-Validator
+          chmod +x ~/.local/bin/ooxml-validator/OOXMLValidatorCLI
         fi
 
     - name: Add OOXML-Validator to PATH

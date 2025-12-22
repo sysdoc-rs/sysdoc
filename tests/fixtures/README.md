@@ -79,7 +79,7 @@ This is also run automatically in CI.
 
 Or download directly from [GitHub Releases](https://github.com/mikeebowen/OOXML-Validator/releases).
 
-**Usage:** `OOXML-Validator file.docx`
+**Usage:** `OOXMLValidatorCLI file.docx`
 
 **Output:** JSON array of validation errors (empty `[]` means valid)
 
