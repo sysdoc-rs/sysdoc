@@ -19,7 +19,7 @@ mod types;
 mod validation;
 
 // Re-export public types
-pub use blocks::MarkdownBlock;
+pub use blocks::{ListItem, MarkdownBlock};
 pub use error::SourceModelError;
 pub use markdown_source::{MarkdownSection, MarkdownSource};
 pub use section_number::SectionNumber;

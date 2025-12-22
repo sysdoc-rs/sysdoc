@@ -138,6 +138,7 @@ TEST_CASES=(
     "test-svg-image"
     "test-csv-table"
     "test-inline-table"
+    "test-lists"
 )
 
 echo ""

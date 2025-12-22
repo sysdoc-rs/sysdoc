@@ -1,0 +1,14 @@
+document_id = "TEST-LISTS"
+document_name = "Lists Test"
+document_type = "SDD"
+document_standard = "DI-IPSC-81435B"
+document_template = "test"
+docx_template_path = "../template.docx"
+
+[document_owner]
+name = "Test Author"
+email = "test@example.com"
+
+[document_approver]
+name = "Test Approver"
+email = "approver@example.com"

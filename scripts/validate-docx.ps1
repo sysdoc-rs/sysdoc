@@ -118,7 +118,8 @@ $TestCases = @(
     "test-png-image",
     "test-svg-image",
     "test-csv-table",
-    "test-inline-table"
+    "test-inline-table",
+    "test-lists"
 )
 
 Write-Host ""
