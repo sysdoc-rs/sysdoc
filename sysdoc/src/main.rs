@@ -27,6 +27,9 @@ mod pipeline;
 mod source_model;
 mod unified_document;
 
+// DOCX exporters (allows swapping between docx-rust and docx-rs implementations)
+mod docx_rust_exporter;
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use cli::{Cli, Commands, OutputFormat};
