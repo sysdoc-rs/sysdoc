@@ -14,6 +14,7 @@ Minimal test documents for validating sysdoc's markdown to DOCX conversion.
 | `test-svg-image`       | SVG/DrawIO image embedding           |
 | `test-csv-table`       | CSV file table references            |
 | `test-inline-table`    | Inline markdown tables               |
+| `test-lists`           | Numbered and bulleted lists          |
 
 ## Setup
 

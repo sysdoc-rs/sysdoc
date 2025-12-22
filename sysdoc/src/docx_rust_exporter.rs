@@ -4,7 +4,7 @@
 //! using the `docx-rust` crate. It works by loading a template DOCX file and
 //! appending content sections to it.
 
-use crate::source_model::{Alignment, MarkdownBlock, MarkdownSection, TextRun};
+use crate::source_model::{Alignment, ListItem, MarkdownBlock, MarkdownSection, TextRun};
 use crate::unified_document::UnifiedDocument;
 use docx_rust::{
     document::{
@@ -12,7 +12,7 @@ use docx_rust::{
         GraphicData, Inline, NvPicPr, Paragraph, Picture, PrstGeom, Run, SpPr, Stretch, Table,
         TableCell, TableGrid, TableRow, TextSpace, Xfrm,
     },
-    formatting::{CharacterProperty, Fonts, JustificationVal, ParagraphProperty},
+    formatting::{CharacterProperty, Fonts, Indent, JustificationVal, ParagraphProperty},
     media::MediaType,
     rels::Relationship,
     Docx, DocxFile,
@@ -488,6 +488,25 @@ fn append_block(
             let table = create_inline_table(alignments, headers, rows);
             docx.document.push(table);
         }
+        MarkdownBlock::List { start, items } => {
+            append_list(docx, start, items, 0, image_lookup);
+        }
+        MarkdownBlock::CodeBlock { code, .. } => {
+            // Render code blocks with monospace font
+            let para = create_code_block_paragraph(code);
+            docx.document.push(para);
+        }
+        MarkdownBlock::BlockQuote(blocks) => {
+            // Render block quotes with indentation
+            for inner_block in blocks {
+                append_block_with_indent(docx, inner_block, 1, image_lookup);
+            }
+        }
+        MarkdownBlock::Rule => {
+            // Render horizontal rule as a separator line
+            let para = Paragraph::default().push_text("─".repeat(50));
+            docx.document.push(para);
+        }
         _ => {
             // For unhandled block types, add a placeholder
             let para = Paragraph::default().push_text(format!(
@@ -766,6 +785,190 @@ fn create_text_run(text_run: &TextRun, make_bold: bool) -> Run<'static> {
     Run::default()
         .property(prop)
         .push_text((text, TextSpace::Preserve))
+}
+
+/// Indentation in twips (twentieths of a point) per nesting level
+/// 720 twips = 0.5 inch
+const INDENT_TWIPS_PER_LEVEL: isize = 720;
+
+/// Append a list (ordered or unordered) to the document
+///
+/// # Parameters
+/// * `docx` - The document to append to
+/// * `start` - Starting number for ordered lists (None for unordered)
+/// * `items` - List items to append
+/// * `indent_level` - Current indentation level for nested lists
+/// * `image_lookup` - Image lookup table for any embedded images
+fn append_list(
+    docx: &mut Docx<'_>,
+    start: &Option<u64>,
+    items: &[ListItem],
+    indent_level: usize,
+    image_lookup: &HashMap<&PathBuf, ImageLookupInfo<'_>>,
+) {
+    let is_ordered = start.is_some();
+    let start_num = start.unwrap_or(1);
+
+    for (idx, item) in items.iter().enumerate() {
+        let item_number = start_num + idx as u64;
+
+        // Process each block in the list item
+        for (block_idx, block) in item.content.iter().enumerate() {
+            // Only the first block gets the bullet/number prefix
+            let is_first_block = block_idx == 0;
+
+            match block {
+                MarkdownBlock::Paragraph(runs) => {
+                    let para = create_list_item_paragraph(
+                        runs,
+                        is_ordered,
+                        item_number,
+                        indent_level,
+                        is_first_block,
+                    );
+                    docx.document.push(para);
+                }
+                MarkdownBlock::List {
+                    start: nested_start,
+                    items: nested_items,
+                } => {
+                    // Recursively handle nested lists with increased indentation
+                    append_list(
+                        docx,
+                        nested_start,
+                        nested_items,
+                        indent_level + 1,
+                        image_lookup,
+                    );
+                }
+                _ => {
+                    // For other block types within list items, render with indentation
+                    append_block_with_indent(docx, block, indent_level + 1, image_lookup);
+                }
+            }
+        }
+    }
+}
+
+/// Create a paragraph for a list item with bullet/number prefix
+///
+/// # Parameters
+/// * `runs` - Text runs for the paragraph content
+/// * `is_ordered` - Whether this is an ordered (numbered) list
+/// * `item_number` - The number for ordered lists
+/// * `indent_level` - Indentation level for nested lists
+/// * `include_marker` - Whether to include the bullet/number marker
+fn create_list_item_paragraph(
+    runs: &[TextRun],
+    is_ordered: bool,
+    item_number: u64,
+    indent_level: usize,
+    include_marker: bool,
+) -> Paragraph<'static> {
+    let indent = Indent {
+        left: Some((indent_level as isize + 1) * INDENT_TWIPS_PER_LEVEL),
+        hanging: if include_marker {
+            Some(INDENT_TWIPS_PER_LEVEL / 2)
+        } else {
+            None
+        },
+        ..Default::default()
+    };
+
+    let prop = ParagraphProperty::default().indent(indent);
+    let mut para = Paragraph::default().property(prop);
+
+    // Add bullet or number prefix
+    if include_marker {
+        let marker = if is_ordered {
+            format!("{}.\t", item_number)
+        } else {
+            "•\t".to_string()
+        };
+
+        let marker_run = Run::default().push_text((marker, TextSpace::Preserve));
+        para = para.push(marker_run);
+    }
+
+    // Add the content runs
+    for text_run in runs {
+        let run = create_run(text_run);
+        para = para.push(run);
+    }
+
+    para
+}
+
+/// Append a block with indentation (for block quotes and nested content)
+fn append_block_with_indent(
+    docx: &mut Docx<'_>,
+    block: &MarkdownBlock,
+    indent_level: usize,
+    image_lookup: &HashMap<&PathBuf, ImageLookupInfo<'_>>,
+) {
+    match block {
+        MarkdownBlock::Paragraph(runs) => {
+            let para = create_indented_paragraph(runs, indent_level);
+            docx.document.push(para);
+        }
+        MarkdownBlock::List { start, items } => {
+            append_list(docx, start, items, indent_level, image_lookup);
+        }
+        MarkdownBlock::BlockQuote(inner_blocks) => {
+            for inner_block in inner_blocks {
+                append_block_with_indent(docx, inner_block, indent_level + 1, image_lookup);
+            }
+        }
+        _ => {
+            // For other block types, just call the regular append_block
+            // This handles images, tables, etc. within indented contexts
+            append_block(docx, block, image_lookup);
+        }
+    }
+}
+
+/// Create an indented paragraph
+fn create_indented_paragraph(runs: &[TextRun], indent_level: usize) -> Paragraph<'static> {
+    let indent = Indent {
+        left: Some((indent_level as isize) * INDENT_TWIPS_PER_LEVEL),
+        ..Default::default()
+    };
+
+    let prop = ParagraphProperty::default().indent(indent);
+    let mut para = Paragraph::default().property(prop);
+
+    for text_run in runs {
+        let run = create_run(text_run);
+        para = para.push(run);
+    }
+
+    para
+}
+
+/// Create a paragraph for a code block with monospace formatting
+fn create_code_block_paragraph(code: &str) -> Paragraph<'static> {
+    let mut para = Paragraph::default();
+
+    // Split code into lines and add each with monospace font
+    for (idx, line) in code.lines().enumerate() {
+        if idx > 0 {
+            // Add a line break between lines
+            // Note: In DOCX, we typically create separate paragraphs or use break elements
+            // For simplicity, we'll use soft line breaks within a single paragraph
+            let break_run = Run::default().push_break(docx_rust::document::BreakType::TextWrapping);
+            para = para.push(break_run);
+        }
+
+        let prop = CharacterProperty::default()
+            .fonts(Fonts::default().ascii("Consolas").h_ansi("Consolas"));
+
+        let run = Run::default()
+            .property(prop)
+            .push_text((line.to_string(), TextSpace::Preserve));
+        para = para.push(run);
+    }
+
+    para
 }
 
 /// Export errors
