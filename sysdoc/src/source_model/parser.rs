@@ -330,6 +330,9 @@ impl MarkdownParser {
                 self.finish_table();
             }
             TagEnd::TableHead => {
+                // In pulldown-cmark 0.13+, TableHead doesn't contain TableRow,
+                // so we need to finish the header row here before clearing in_header
+                self.finish_table_row();
                 if let Some(table_ctx) = self.table_stack.last_mut() {
                     table_ctx.in_header = false;
                 }
