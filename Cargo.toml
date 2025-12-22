@@ -22,6 +22,7 @@ anyhow = "1.0.100"
 thiserror = "2.0.17"
 itertools = "0.14"
 docx-rust = "0.1"
+docx-rs = "0.4"
 imagesize = "0.13"
 
 # [patch.crates-io]

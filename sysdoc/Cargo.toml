@@ -23,6 +23,7 @@ thiserror = { workspace = true }
 itertools = { workspace = true }
 rayon = { version = "1.11", optional = true }
 docx-rust = { workspace = true }
+docx-rs = { workspace = true }
 imagesize = { workspace = true }
 
 [dev-dependencies]

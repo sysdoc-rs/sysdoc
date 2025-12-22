@@ -12,6 +12,16 @@ pub enum OutputFormat {
     Markdown,
 }
 
+/// DOCX export engine selection
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum DocxEngine {
+    /// Use docx-rust library (requires template, better compatibility)
+    #[default]
+    DocxRust,
+    /// Use docx-rs library (no template needed, creates from scratch)
+    DocxRs,
+}
+
 /// CLI structure for the sysdoc application
 #[derive(Parser)]
 #[command(name = "sysdoc")]
@@ -72,6 +82,10 @@ pub enum Commands {
         /// Skip image embedding (DOCX only)
         #[arg(long)]
         no_images: bool,
+
+        /// DOCX export engine (docx-rust requires template, docx-rs creates from scratch)
+        #[arg(long, value_enum, default_value = "docx-rust")]
+        engine: DocxEngine,
     },
 
     /// Validate document structure and references
