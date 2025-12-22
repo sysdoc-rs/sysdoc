@@ -30,7 +30,9 @@ if ($InstallValidator) {
 }
 
 # Check if OOXMLValidator is available
-$validatorPath = Get-Command OOXMLValidator -ErrorAction SilentlyContinue
+# $validatorPath = Get-Command OOXMLValidator -ErrorAction SilentlyContinue
+$validatorPath = "OOXMLValidatorCLI.exe"
+
 if (-not $validatorPath) {
     Write-Host "Warning: OOXMLValidator not found. Install with:" -ForegroundColor Yellow
     Write-Host "  dotnet tool install -g OOXMLValidator"
@@ -47,7 +49,8 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to build sysdoc"
     }
-} finally {
+}
+finally {
     Pop-Location
 }
 
@@ -99,7 +102,7 @@ foreach ($testCase in $TestCases) {
     }
 
     # Validate with OOXMLValidator
-    $validationOutput = & OOXMLValidator $OutputFile 2>&1 | Out-String
+    $validationOutput = & $validatorPath $OutputFile 2>&1 | Out-String
 
     # Check if validation passed (empty JSON array [] means no errors)
     if ($validationOutput -match '^\s*\[\s*\]\s*$' -or $validationOutput -match '"errors"\s*:\s*\[\s*\]') {
