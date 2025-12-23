@@ -1,0 +1,407 @@
+name = "tr-standard-v1"
+document_type = "TR"
+template_spec = "DI-MISC-80508B"
+
+# =============================================================================
+# Configuration file
+# =============================================================================
+
+[files."sysdoc.toml"]
+content = """
+document_id = "TR-XXX"
+document_name = "Technical Report"
+document_type = "TR"
+document_standard = "DI-MISC-80508B"
+document_template = "tr-standard-v1"
+docx_template_path = "template.docx"
+
+[document_owner]
+name = "Your Name"
+email = "your.email@example.com"
+
+[document_approver]
+name = "Approver Name"
+email = "approver@example.com"
+"""
+
+# =============================================================================
+# Git ignore
+# =============================================================================
+
+[files.".gitignore"]
+content = """
+build/
+*.docx
+*.pdf
+.DS_Store
+"""
+
+# =============================================================================
+# README
+# =============================================================================
+
+[files."README.md"]
+content = """
+# Technical Report (TR)
+
+This document follows DI-MISC-80508B - Technical Report.
+
+## Purpose
+
+The Technical Report (TR) provides the results of studies, investigations, analyses,
+tests, or evaluations. It documents technical findings, conclusions, and recommendations
+resulting from engineering or scientific work.
+
+## Building
+
+Run `sysdoc build` to generate the final document.
+
+## Structure
+
+- `src/01_executive_summary/` - Executive summary of key findings
+- `src/02_introduction/` - Purpose, scope, and background
+- `src/03_methods/` - Methods, approach, and procedures
+- `src/04_results/` - Results and findings
+- `src/05_conclusions/` - Conclusions drawn from results
+- `src/06_recommendations/` - Recommended actions
+- `src/07_references/` - Referenced documents
+- `src/appendices/` - Supporting data and materials
+
+## Related Standards
+
+- DI-MISC-80508B - Technical Report
+- MIL-STD-961E - Defense and Program-Unique Specifications Format and Content
+"""
+
+# =============================================================================
+# SECTION 1: EXECUTIVE SUMMARY
+# =============================================================================
+
+[files."src/01_executive_summary/01.00_executive_summary.md"]
+heading = "Executive Summary"
+guidance = """
+1. Executive Summary. This section shall provide a brief overview of the entire report,
+including:
+
+a) Purpose of the study, investigation, or analysis
+b) Principal findings or results
+c) Significant conclusions
+d) Key recommendations
+
+The executive summary should be concise (typically 1-2 pages) and written so that
+readers can understand the essential content without reading the full report.
+"""
+
+# =============================================================================
+# SECTION 2: INTRODUCTION
+# =============================================================================
+
+[files."src/02_introduction/02.00_introduction.md"]
+heading = "Introduction"
+guidance = """
+2. Introduction. This section shall be divided into the following paragraphs to
+establish the context and scope of the technical report.
+"""
+
+[files."src/02_introduction/02.01_purpose.md"]
+heading = "Purpose"
+guidance = """
+2.1. Purpose. This paragraph shall describe the purpose of the study, investigation,
+analysis, test, or evaluation documented in this report. It shall identify:
+
+a) The specific objectives to be achieved
+b) The problem or question being addressed
+c) The intended use of the results
+"""
+
+[files."src/02_introduction/02.02_scope.md"]
+heading = "Scope"
+guidance = """
+2.2. Scope. This paragraph shall describe the scope of the work documented in this
+report, including:
+
+a) What is included in the study
+b) What is explicitly excluded
+c) Limitations or constraints on the work
+d) Time period covered
+"""
+
+[files."src/02_introduction/02.03_background.md"]
+heading = "Background"
+guidance = """
+2.3. Background. This paragraph shall provide background information necessary to
+understand the context of the work, including:
+
+a) Historical context and previous related work
+b) Relevant prior studies or reports
+c) Current state of knowledge or technology
+d) Events or circumstances that led to this study
+"""
+
+[files."src/02_introduction/02.04_document_overview.md"]
+heading = "Document Overview"
+guidance = """
+2.4. Document Overview. This paragraph shall summarize the contents and organization
+of this document. It shall describe any security or privacy considerations associated
+with its use.
+"""
+
+# =============================================================================
+# SECTION 3: METHODS AND APPROACH
+# =============================================================================
+
+[files."src/03_methods/03.00_methods.md"]
+heading = "Methods and Approach"
+guidance = """
+3. Methods and Approach. This section shall describe the technical approach, methods,
+and procedures used to conduct the study, investigation, analysis, test, or evaluation.
+"""
+
+[files."src/03_methods/03.01_technical_approach.md"]
+heading = "Technical Approach"
+guidance = """
+3.1. Technical Approach. This paragraph shall describe the overall technical approach
+used, including:
+
+a) The general strategy or methodology employed
+b) Rationale for selecting this approach
+c) Alternatives considered and reasons for rejection
+d) Key assumptions made
+"""
+
+[files."src/03_methods/03.02_procedures.md"]
+heading = "Procedures"
+guidance = """
+3.2. Procedures. This paragraph shall describe the specific procedures followed,
+including:
+
+a) Step-by-step processes used
+b) Data collection methods
+c) Analysis techniques
+d) Quality control measures
+"""
+
+[files."src/03_methods/03.03_tools_and_equipment.md"]
+heading = "Tools and Equipment"
+guidance = """
+3.3. Tools and Equipment. This paragraph shall identify and describe the tools,
+equipment, software, and other resources used, including:
+
+a) Hardware and software tools
+b) Test equipment and instrumentation
+c) Analytical tools and models
+d) Version information where applicable
+"""
+
+[files."src/03_methods/03.04_test_configuration.md"]
+heading = "Test Configuration"
+guidance = """
+3.4. Test Configuration. If applicable, this paragraph shall describe the test
+configuration or experimental setup, including:
+
+a) Physical configuration and layout
+b) Environmental conditions
+c) Test subjects or samples
+d) Calibration and verification procedures
+"""
+
+# =============================================================================
+# SECTION 4: RESULTS AND FINDINGS
+# =============================================================================
+
+[files."src/04_results/04.00_results.md"]
+heading = "Results and Findings"
+guidance = """
+4. Results and Findings. This section shall present the results of the study,
+investigation, analysis, test, or evaluation. Results shall be presented objectively
+without interpretation (interpretation belongs in Conclusions).
+"""
+
+[files."src/04_results/04.01_data_presentation.md"]
+heading = "Data Presentation"
+guidance = """
+4.1. Data Presentation. This paragraph shall present the data collected or generated,
+including:
+
+a) Raw data or processed data as appropriate
+b) Statistical summaries
+c) Tables, charts, and graphs
+d) Comparison with expected results or benchmarks
+
+Data should be presented clearly and organized logically to support the conclusions.
+"""
+
+[files."src/04_results/04.02_analysis_results.md"]
+heading = "Analysis Results"
+guidance = """
+4.2. Analysis Results. This paragraph shall present the results of any analysis
+performed on the data, including:
+
+a) Quantitative analysis results
+b) Qualitative analysis results
+c) Correlation or relationship findings
+d) Anomalies or unexpected results
+"""
+
+[files."src/04_results/04.03_observations.md"]
+heading = "Observations"
+guidance = """
+4.3. Observations. This paragraph shall document significant observations made
+during the study, including:
+
+a) Notable events or phenomena
+b) Patterns or trends identified
+c) Issues or problems encountered
+d) Deviations from expected behavior
+"""
+
+# =============================================================================
+# SECTION 5: CONCLUSIONS
+# =============================================================================
+
+[files."src/05_conclusions/05.00_conclusions.md"]
+heading = "Conclusions"
+guidance = """
+5. Conclusions. This section shall present the conclusions drawn from the results
+and findings. Conclusions shall be based on evidence presented in the Results section.
+"""
+
+[files."src/05_conclusions/05.01_summary_of_findings.md"]
+heading = "Summary of Findings"
+guidance = """
+5.1. Summary of Findings. This paragraph shall summarize the key findings from the
+study, highlighting:
+
+a) Most significant results
+b) How results address the original objectives
+c) Degree of confidence in the results
+d) Limitations of the findings
+"""
+
+[files."src/05_conclusions/05.02_interpretation.md"]
+heading = "Interpretation"
+guidance = """
+5.2. Interpretation. This paragraph shall provide interpretation of the results,
+including:
+
+a) What the results mean in context
+b) Comparison with previous work or expectations
+c) Implications of the findings
+d) Factors that may have influenced results
+"""
+
+[files."src/05_conclusions/05.03_lessons_learned.md"]
+heading = "Lessons Learned"
+guidance = """
+5.3. Lessons Learned. This paragraph shall document lessons learned during the study
+that may be valuable for future work, including:
+
+a) What worked well
+b) What could be improved
+c) Unexpected challenges and how they were addressed
+d) Best practices identified
+"""
+
+# =============================================================================
+# SECTION 6: RECOMMENDATIONS
+# =============================================================================
+
+[files."src/06_recommendations/06.00_recommendations.md"]
+heading = "Recommendations"
+guidance = """
+6. Recommendations. This section shall present recommendations based on the
+conclusions of the study.
+"""
+
+[files."src/06_recommendations/06.01_recommended_actions.md"]
+heading = "Recommended Actions"
+guidance = """
+6.1. Recommended Actions. This paragraph shall describe specific actions recommended
+based on the study results, including:
+
+a) Immediate actions to be taken
+b) Near-term actions
+c) Long-term actions
+d) Priority or sequence of actions
+"""
+
+[files."src/06_recommendations/06.02_further_study.md"]
+heading = "Areas for Further Study"
+guidance = """
+6.2. Areas for Further Study. This paragraph shall identify areas where additional
+study or investigation is recommended, including:
+
+a) Questions raised by this study
+b) Areas requiring deeper investigation
+c) Related topics that warrant attention
+d) Proposed approaches for future work
+"""
+
+[files."src/06_recommendations/06.03_implementation_considerations.md"]
+heading = "Implementation Considerations"
+guidance = """
+6.3. Implementation Considerations. This paragraph shall discuss considerations for
+implementing the recommendations, including:
+
+a) Resources required
+b) Potential risks or challenges
+c) Dependencies or prerequisites
+d) Success criteria
+"""
+
+# =============================================================================
+# SECTION 7: REFERENCES
+# =============================================================================
+
+[files."src/07_references/07.00_references.md"]
+heading = "References"
+guidance = """
+7. References. This section shall list all documents referenced in this report,
+including:
+
+a) Document number or identifier
+b) Title
+c) Revision and date
+d) Source for documents not available through standard channels
+
+References shall be listed in a consistent format (e.g., alphabetical by author,
+numerical order of citation, or by document type).
+"""
+
+# =============================================================================
+# APPENDICES
+# =============================================================================
+
+[files."src/appendices/a_supporting_data.md"]
+heading = "Supporting Data"
+guidance = """
+Appendix A. Supporting Data. This appendix shall contain detailed supporting data
+that is too voluminous for the main body of the report, including:
+
+a) Detailed test data
+b) Raw measurement data
+c) Calculation worksheets
+d) Detailed statistical analyses
+"""
+
+[files."src/appendices/b_acronyms_and_glossary.md"]
+heading = "Acronyms and Glossary"
+guidance = """
+Appendix B. Acronyms and Glossary. This appendix shall contain:
+
+B.1. Acronyms. List of acronyms and abbreviations used in this document.
+
+B.2. Glossary. Definitions of technical terms used in this document.
+"""
+
+[files."src/appendices/c_additional_materials.md"]
+heading = "Additional Materials"
+guidance = """
+Appendix C. Additional Materials. This appendix shall contain additional materials
+that support the report, such as:
+
+a) Photographs or images
+b) Detailed diagrams or schematics
+c) Sample forms or templates used
+d) Correspondence or meeting notes
+"""
