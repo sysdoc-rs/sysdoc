@@ -16,7 +16,12 @@ pub struct TemplateInfo {
     pub spec: String,
     /// Template TOML content
     pub content: &'static str,
+    /// Binary files to include (filename, content)
+    pub binary_files: Vec<(&'static str, &'static [u8])>,
 }
+
+/// Embedded template.docx binary
+const TEMPLATE_DOCX: &[u8] = include_bytes!("templates/template.docx");
 
 /// Get all available templates
 ///
@@ -29,48 +34,56 @@ pub fn get_all_templates() -> Vec<TemplateInfo> {
             doc_type: "SDD".to_string(),
             spec: "DI-IPSC-81435B".to_string(),
             content: include_str!("templates/sdd-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
         TemplateInfo {
             id: "srs-standard-v1".to_string(),
             doc_type: "SRS".to_string(),
             spec: "DI-IPSC-81433A".to_string(),
             content: include_str!("templates/srs-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
         TemplateInfo {
             id: "ssdd-standard-v1".to_string(),
             doc_type: "SSDD".to_string(),
             spec: "DI-IPSC-81437A".to_string(),
             content: include_str!("templates/ssdd-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
         TemplateInfo {
             id: "sss-standard-v1".to_string(),
             doc_type: "SSS".to_string(),
             spec: "DI-IPSC-81431A".to_string(),
             content: include_str!("templates/sss-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
         TemplateInfo {
             id: "tr-standard-v1".to_string(),
             doc_type: "TR".to_string(),
             spec: "DI-MISC-80508B".to_string(),
             content: include_str!("templates/tr-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
         TemplateInfo {
             id: "stp-standard-v1".to_string(),
             doc_type: "STP".to_string(),
             spec: "DI-IPSC-81438".to_string(),
             content: include_str!("templates/stp-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
         TemplateInfo {
             id: "std-standard-v1".to_string(),
             doc_type: "STD".to_string(),
             spec: "DI-IPSC-81439".to_string(),
             content: include_str!("templates/std-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
         TemplateInfo {
             id: "str-standard-v1".to_string(),
             doc_type: "STR".to_string(),
             spec: "DI-IPSC-81440".to_string(),
             content: include_str!("templates/str-standard-v1.toml"),
+            binary_files: vec![("template.docx", TEMPLATE_DOCX)],
         },
     ]
 }
