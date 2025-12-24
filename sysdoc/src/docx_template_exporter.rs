@@ -145,6 +145,9 @@ pub fn to_docx(
         } else if name == "[Content_Types].xml" {
             // Ensure image content types are present
             ensure_image_content_types(&contents, &images)?
+        } else if name == "word/styles.xml" {
+            // Ensure required styles (like Caption) are defined
+            ensure_required_styles(&contents)?
         } else {
             contents
         };
@@ -295,11 +298,12 @@ fn generate_block_xml(block: &MarkdownBlock, images: &HashMap<PathBuf, ImageData
         MarkdownBlock::Image {
             absolute_path,
             alt_text,
+            title,
             exists: true,
             ..
         } => {
             if let Some(image_data) = images.get(absolute_path) {
-                generate_image_xml(image_data, alt_text)
+                generate_image_xml(image_data, alt_text, title)
             } else {
                 generate_paragraph_xml(&[TextRun::new(format!(
                     "[Image not found: {}]",
@@ -418,13 +422,18 @@ fn generate_run_xml(run: &TextRun) -> String {
     xml
 }
 
-/// Generate OOXML for an inline image
-fn generate_image_xml(image_data: &ImageData, alt_text: &str) -> String {
+/// Generate OOXML for an inline image with caption
+///
+/// # Parameters
+/// * `image_data` - The image data including dimensions and relationship ID
+/// * `alt_text` - Alternative text for accessibility (used in image description)
+/// * `title` - Title text used for the visible caption below the image
+fn generate_image_xml(image_data: &ImageData, alt_text: &str, title: &str) -> String {
     // Use a static counter for unique IDs within a document export session
     static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(1);
     let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
-    format!(
+    let image_paragraph = format!(
         r#"<w:p>
   <w:pPr><w:jc w:val="center"/></w:pPr>
   <w:r>
@@ -460,13 +469,34 @@ fn generate_image_xml(image_data: &ImageData, alt_text: &str) -> String {
         image_data.height_emu,
         id,
         id,
-        escape_xml(alt_text),
+        escape_xml(alt_text), // Alt text for accessibility
         id,
         id,
         image_data.rel_id,
         image_data.width_emu,
         image_data.height_emu,
-    )
+    );
+
+    // Generate caption paragraph if title is not empty
+    // Uses the Caption paragraph style which applies CaptionChar character formatting
+    let caption_paragraph = if !title.is_empty() {
+        format!(
+            r#"<w:p>
+  <w:pPr>
+    <w:pStyle w:val="Caption"/>
+    <w:jc w:val="center"/>
+  </w:pPr>
+  <w:r>
+    <w:t xml:space="preserve">{}</w:t>
+  </w:r>
+</w:p>"#,
+            escape_xml(title)
+        )
+    } else {
+        String::new()
+    };
+
+    format!("{}{}", image_paragraph, caption_paragraph)
 }
 
 /// Generate OOXML for a table from CSV data
@@ -800,6 +830,46 @@ fn add_image_relationships(
     }
 }
 
+/// Ensure required styles are present in styles.xml
+fn ensure_required_styles(styles_xml: &[u8]) -> Result<Vec<u8>, ExportError> {
+    let xml_str = String::from_utf8_lossy(styles_xml);
+
+    // Check if Caption style already exists
+    if xml_str.contains(r#"w:styleId="Caption""#) {
+        return Ok(styles_xml.to_vec());
+    }
+
+    // Caption style definition - italic, centered, 10pt, based on Normal
+    let caption_style = r#"<w:style w:type="paragraph" w:styleId="Caption">
+  <w:name w:val="Caption"/>
+  <w:basedOn w:val="Normal"/>
+  <w:next w:val="Normal"/>
+  <w:qFormat/>
+  <w:pPr>
+    <w:spacing w:before="0" w:after="200"/>
+    <w:jc w:val="center"/>
+  </w:pPr>
+  <w:rPr>
+    <w:i/>
+    <w:iCs/>
+    <w:sz w:val="20"/>
+    <w:szCs w:val="20"/>
+  </w:rPr>
+</w:style>"#;
+
+    // Find the closing </w:styles> tag and insert before it
+    if let Some(styles_close_pos) = xml_str.rfind("</w:styles>") {
+        let mut result = String::with_capacity(xml_str.len() + caption_style.len());
+        result.push_str(&xml_str[..styles_close_pos]);
+        result.push_str(caption_style);
+        result.push_str("</w:styles>");
+        Ok(result.into_bytes())
+    } else {
+        // If no closing tag found, return as-is
+        Ok(styles_xml.to_vec())
+    }
+}
+
 /// Ensure image content types are present in [Content_Types].xml
 fn ensure_image_content_types(
     content_types_xml: &[u8],
@@ -847,5 +917,37 @@ fn ensure_image_content_types(
         Err(ExportError::Format(
             "Could not find </Types> in [Content_Types].xml".to_string(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ensure_required_styles_adds_caption() {
+        // Minimal styles.xml without Caption
+        let input = br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:styles>"#;
+
+        let result = ensure_required_styles(input).unwrap();
+        let output = String::from_utf8(result).unwrap();
+
+        assert!(output.contains(r#"w:styleId="Caption""#));
+        assert!(output.contains("<w:i/>"));
+    }
+
+    #[test]
+    fn test_ensure_required_styles_preserves_existing_caption() {
+        // styles.xml with existing Caption style
+        let input = br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:style w:type="paragraph" w:styleId="Caption"><w:name w:val="Caption"/></w:style>
+</w:styles>"#;
+
+        let result = ensure_required_styles(input).unwrap();
+
+        // Should return unchanged
+        assert_eq!(result, input.to_vec());
     }
 }
