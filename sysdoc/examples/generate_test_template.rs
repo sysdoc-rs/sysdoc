@@ -1,6 +1,6 @@
 //! Generates a minimal DOCX template for testing
 //!
-//! Run with: cargo run --bin generate_test_template
+//! Run with: cargo run --example generate_test_template
 
 use docx_rust::document::Paragraph;
 use docx_rust::Docx;
