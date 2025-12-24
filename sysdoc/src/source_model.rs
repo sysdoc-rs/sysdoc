@@ -21,6 +21,7 @@ mod validation;
 // Re-export public types
 pub use blocks::{ListItem, MarkdownBlock};
 pub use error::SourceModelError;
+pub use image::ImageFormat;
 pub use markdown_source::{MarkdownSection, MarkdownSource};
 pub use section_number::SectionNumber;
 pub use table::TableSource;

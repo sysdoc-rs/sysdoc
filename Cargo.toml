@@ -25,6 +25,7 @@ docx-rust = "0.1"
 docx-rs = "0.4"
 imagesize = "0.13"
 zip = "2.2"
+base64 = "0.22"
 
 # [patch.crates-io]
 # docx-rust = { path = "C:/Development/docx-rs" }

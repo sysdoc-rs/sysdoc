@@ -360,6 +360,7 @@ fn build_section_hierarchy(
 /// Stage 3: Export unified document to various formats
 pub mod export {
     use crate::docx_rust_exporter;
+    use crate::markdown_exporter;
     use crate::unified_document::UnifiedDocument;
     use std::path::Path;
 
@@ -377,18 +378,18 @@ pub mod export {
         docx_rust_exporter::to_docx(doc, template_path, output_path)
     }
 
-    /// Export to aggregated markdown file
+    /// Export to aggregated markdown file with numbered headings and embedded images
     ///
     /// # Parameters
-    /// * `_doc` - The unified document to export
-    /// * `_output_path` - Path where the aggregated markdown file will be written
+    /// * `doc` - The unified document to export
+    /// * `output_path` - Path where the aggregated markdown file will be written
     ///
     /// # Returns
     /// * `Ok(())` - Successfully exported to markdown
-    /// * `Err(ExportError)` - Error during export (currently not implemented)
-    pub fn to_markdown(_doc: &UnifiedDocument, _output_path: &Path) -> Result<(), ExportError> {
-        // TODO: Implement markdown export
-        Err(ExportError::NotImplemented("Markdown export".to_string()))
+    /// * `Err(ExportError)` - Error during export
+    pub fn to_markdown(doc: &UnifiedDocument, output_path: &Path) -> Result<(), ExportError> {
+        markdown_exporter::to_markdown(doc, output_path)
+            .map_err(|e| ExportError::IoError(std::io::Error::other(e.to_string())))
     }
 }
 

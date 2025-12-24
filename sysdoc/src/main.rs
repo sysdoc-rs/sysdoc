@@ -32,6 +32,9 @@ mod docx_rs_exporter;
 mod docx_rust_exporter;
 mod docx_template_exporter;
 
+// Markdown exporter
+mod markdown_exporter;
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use cli::{Cli, Commands, DocxEngine, OutputFormat};
