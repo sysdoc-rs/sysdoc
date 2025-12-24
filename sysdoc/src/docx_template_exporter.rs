@@ -839,11 +839,10 @@ fn ensure_required_styles(styles_xml: &[u8]) -> Result<Vec<u8>, ExportError> {
         return Ok(styles_xml.to_vec());
     }
 
-    // Caption style definition - italic, centered, 10pt, based on Normal
+    // Caption style definition - italic, centered, 10pt
+    // Note: We don't use basedOn/next because the template may not have Normal defined
     let caption_style = r#"<w:style w:type="paragraph" w:styleId="Caption">
   <w:name w:val="Caption"/>
-  <w:basedOn w:val="Normal"/>
-  <w:next w:val="Normal"/>
   <w:qFormat/>
   <w:pPr>
     <w:spacing w:before="0" w:after="200"/>
