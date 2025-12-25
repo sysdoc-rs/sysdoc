@@ -21,7 +21,7 @@
 //! - Document properties
 
 use crate::source_model::{Alignment, ListItem, MarkdownBlock, MarkdownSection, TextRun};
-use crate::unified_document::UnifiedDocument;
+use crate::unified_document::{DocumentMetadata, UnifiedDocument};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -123,6 +123,10 @@ pub fn to_docx(
     // Track which files we've written (to handle document.xml and rels specially)
     let mut written_files: std::collections::HashSet<String> = std::collections::HashSet::new();
 
+    // Track docProps file contents for later updating
+    let mut core_xml_contents: Option<Vec<u8>> = None;
+    let mut custom_xml_contents: Option<Vec<u8>> = None;
+
     // Copy all files from template, modifying document.xml and relationships
     for i in 0..template_zip.len() {
         let mut file = template_zip.by_index(i)?;
@@ -143,21 +147,58 @@ pub fn to_docx(
             // Add image relationships
             add_image_relationships(&contents, &images)?
         } else if name == "[Content_Types].xml" {
-            // Ensure image content types are present
-            ensure_image_content_types(&contents, &images)?
+            // Ensure image content types and docProps overrides are present
+            let with_images = ensure_image_content_types(&contents, &images)?;
+            ensure_docprops_content_types(&with_images)?
+        } else if name == "_rels/.rels" {
+            // Ensure docProps relationships are present
+            ensure_docprops_relationships(&contents)?
         } else if name == "word/styles.xml" {
             // Ensure required styles (like Caption) are defined
             ensure_required_styles(&contents)?
+        } else if name == "docProps/core.xml" {
+            // Save for later updating, don't write yet
+            core_xml_contents = Some(contents.clone());
+            Vec::new() // Return empty to skip writing
+        } else if name == "docProps/custom.xml" {
+            // Save for later updating, don't write yet
+            custom_xml_contents = Some(contents.clone());
+            Vec::new() // Return empty to skip writing
+        } else if name == "docProps/app.xml" {
+            // Pass through unchanged
+            contents
         } else {
             contents
         };
 
-        let options =
-            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-        output_zip.start_file(&name, options)?;
-        output_zip.write_all(&modified_contents)?;
-        written_files.insert(name);
+        // Only write if we have contents (skip empty ones like core.xml/custom.xml)
+        if !modified_contents.is_empty() {
+            let options =
+                SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+            output_zip.start_file(&name, options)?;
+            output_zip.write_all(&modified_contents)?;
+            written_files.insert(name);
+        }
     }
+
+    // Write updated docProps files with document metadata
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
+    let core_xml = update_or_create_core_properties(
+        core_xml_contents.as_deref(),
+        &doc.metadata,
+    )?;
+    output_zip.start_file("docProps/core.xml", options)?;
+    output_zip.write_all(&core_xml)?;
+    written_files.insert("docProps/core.xml".to_string());
+
+    let custom_xml = update_or_create_custom_properties(
+        custom_xml_contents.as_deref(),
+        &doc.metadata,
+    )?;
+    output_zip.start_file("docProps/custom.xml", options)?;
+    output_zip.write_all(&custom_xml)?;
+    written_files.insert("docProps/custom.xml".to_string());
 
     // Add new image files to word/media/
     for (path, image_data) in &images {
@@ -787,6 +828,329 @@ fn escape_xml(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
+}
+
+/// Format ISO 8601 datetime for use in docProps with W3CDTF type
+///
+/// Simply validates the string isn't empty. Git already provides ISO 8601 format.
+fn format_iso8601_for_docprops(iso_str: &str) -> Option<String> {
+    if iso_str.trim().is_empty() {
+        None
+    } else {
+        Some(iso_str.trim().to_string())
+    }
+}
+
+/// Extract text content between XML tags
+///
+/// Helper function to extract preserved values from existing XML
+fn extract_xml_tag_content(xml: &str, tag_name: &str) -> Option<String> {
+    let open_tag = format!("<{}>", tag_name);
+    let close_tag = format!("</{}>", tag_name);
+
+    if let Some(start) = xml.find(&open_tag) {
+        let content_start = start + open_tag.len();
+        if let Some(end) = xml[content_start..].find(&close_tag) {
+            return Some(xml[content_start..content_start + end].to_string());
+        }
+    }
+    None
+}
+
+/// Update or create docProps/core.xml with document metadata
+///
+/// This function either creates a new core.xml from scratch or updates an existing one,
+/// preserving fields that we don't explicitly set.
+fn update_or_create_core_properties(
+    existing_xml: Option<&[u8]>,
+    metadata: &DocumentMetadata,
+) -> Result<Vec<u8>, ExportError> {
+    // Extract preserved fields from existing XML
+    let (keywords, description, last_modified_by, revision) = if let Some(xml_bytes) = existing_xml {
+        let xml_str = String::from_utf8_lossy(xml_bytes);
+        (
+            extract_xml_tag_content(&xml_str, "cp:keywords").unwrap_or_default(),
+            extract_xml_tag_content(&xml_str, "dc:description").unwrap_or_default(),
+            extract_xml_tag_content(&xml_str, "cp:lastModifiedBy").unwrap_or_default(),
+            extract_xml_tag_content(&xml_str, "cp:revision").unwrap_or_else(|| "1".to_string()),
+        )
+    } else {
+        (String::new(), String::new(), String::new(), "1".to_string())
+    };
+
+    // Prepare values
+    let title = escape_xml(&metadata.title);
+    let creator = escape_xml(&metadata.owner.name);
+    let subject = escape_xml(&format!("{} - {}", metadata.doc_type, metadata.standard));
+
+    // Build XML
+    let mut xml = String::with_capacity(1024);
+    xml.push_str(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#);
+    xml.push('\n');
+    xml.push_str(r#"<cp:coreProperties "#);
+    xml.push_str(r#"xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" "#);
+    xml.push_str(r#"xmlns:dc="http://purl.org/dc/elements/1.1/" "#);
+    xml.push_str(r#"xmlns:dcterms="http://purl.org/dc/terms/" "#);
+    xml.push_str(r#"xmlns:dcmitype="http://purl.org/dc/dcmitype/" "#);
+    xml.push_str(r#"xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">"#);
+    xml.push_str(&format!("<dc:title>{}</dc:title>", title));
+    xml.push_str(&format!("<dc:subject>{}</dc:subject>", subject));
+    xml.push_str(&format!("<dc:creator>{}</dc:creator>", creator));
+    xml.push_str(&format!("<cp:keywords>{}</cp:keywords>", escape_xml(&keywords)));
+    xml.push_str(&format!("<dc:description>{}</dc:description>", escape_xml(&description)));
+    xml.push_str(&format!("<cp:lastModifiedBy>{}</cp:lastModifiedBy>", escape_xml(&last_modified_by)));
+    xml.push_str(&format!("<cp:revision>{}</cp:revision>", escape_xml(&revision)));
+
+    // Add created date if available
+    if let Some(created) = &metadata.created {
+        if let Some(formatted_date) = format_iso8601_for_docprops(created) {
+            xml.push_str(&format!(
+                r#"<dcterms:created xsi:type="dcterms:W3CDTF">{}</dcterms:created>"#,
+                escape_xml(&formatted_date)
+            ));
+        }
+    }
+
+    // Add modified date if available
+    if let Some(modified) = &metadata.modified {
+        if let Some(formatted_date) = format_iso8601_for_docprops(modified) {
+            xml.push_str(&format!(
+                r#"<dcterms:modified xsi:type="dcterms:W3CDTF">{}</dcterms:modified>"#,
+                escape_xml(&formatted_date)
+            ));
+        }
+    }
+
+    xml.push_str("</cp:coreProperties>");
+
+    Ok(xml.into_bytes())
+}
+
+/// Update or create docProps/custom.xml with document metadata
+///
+/// This function either creates new custom.xml from scratch or updates an existing one,
+/// preserving properties that we don't explicitly override.
+fn update_or_create_custom_properties(
+    existing_xml: Option<&[u8]>,
+    metadata: &DocumentMetadata,
+) -> Result<Vec<u8>, ExportError> {
+    // Standard GUID for custom properties
+    const FMTID: &str = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}";
+
+    // Define our properties (name, value)
+    let mut our_properties: Vec<(&str, String)> = vec![
+        ("Document number", metadata.document_id.clone()),
+        ("Document Type", metadata.doc_type.clone()),
+        ("Standard", metadata.standard.clone()),
+        ("Owner", metadata.owner.name.clone()),
+        ("Owner Email", metadata.owner.email.clone()),
+        ("Approver", metadata.approver.name.clone()),
+        ("Approver Email", metadata.approver.email.clone()),
+    ];
+
+    // Add Version if present
+    if let Some(version) = &metadata.version {
+        our_properties.push(("Version", version.to_string()));
+    }
+
+    // Build list of property names we want to override (including Version even if None)
+    let mut our_property_names: std::collections::HashSet<&str> =
+        our_properties.iter().map(|(name, _)| *name).collect();
+    our_property_names.insert("Version"); // Always override Version from template
+
+    // Parse existing properties to preserve non-overridden ones
+    let preserved_properties: Vec<(String, String)> = if let Some(xml_bytes) = existing_xml {
+        let xml_str = String::from_utf8_lossy(xml_bytes);
+
+        // Simple extraction: find all <property> elements and extract name and value
+        let mut preserved = Vec::new();
+        let mut search_pos = 0;
+
+        while let Some(prop_start) = xml_str[search_pos..].find("<property ") {
+            let abs_start = search_pos + prop_start;
+            if let Some(prop_end) = xml_str[abs_start..].find("</property>") {
+                let prop_xml = &xml_str[abs_start..abs_start + prop_end + "</property>".len()];
+
+                // Extract name attribute
+                if let Some(name_start) = prop_xml.find(r#"name=""#) {
+                    let name_content_start = name_start + r#"name=""#.len();
+                    if let Some(name_end) = prop_xml[name_content_start..].find('"') {
+                        let name = &prop_xml[name_content_start..name_content_start + name_end];
+
+                        // Only preserve if not in our properties list
+                        if !our_property_names.contains(name) {
+                            // Extract value (between > and </ of vt:lpwstr)
+                            if let Some(value_start) = prop_xml.find("<vt:lpwstr>") {
+                                let value_content_start = value_start + "<vt:lpwstr>".len();
+                                if let Some(value_end) =
+                                    prop_xml[value_content_start..].find("</vt:lpwstr>")
+                                {
+                                    let value = &prop_xml
+                                        [value_content_start..value_content_start + value_end];
+                                    preserved.push((name.to_string(), value.to_string()));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                search_pos = abs_start + prop_end + "</property>".len();
+            } else {
+                break;
+            }
+        }
+
+        preserved
+    } else {
+        Vec::new()
+    };
+
+    // Build XML
+    let mut xml = String::with_capacity(2048);
+    xml.push_str(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#);
+    xml.push('\n');
+    xml.push_str(r#"<Properties "#);
+    xml.push_str(r#"xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" "#);
+    xml.push_str(r#"xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">"#);
+
+    // Add our properties with sequential PIDs
+    let mut pid = 2;
+    for (name, value) in &our_properties {
+        xml.push_str(&format!(
+            r#"<property fmtid="{}" pid="{}" name="{}">"#,
+            FMTID,
+            pid,
+            escape_xml(name)
+        ));
+        xml.push_str(&format!("<vt:lpwstr>{}</vt:lpwstr>", escape_xml(value)));
+        xml.push_str("</property>");
+        pid += 1;
+    }
+
+    // Add preserved properties
+    for (name, value) in &preserved_properties {
+        xml.push_str(&format!(
+            r#"<property fmtid="{}" pid="{}" name="{}">"#,
+            FMTID,
+            pid,
+            escape_xml(name)
+        ));
+        xml.push_str(&format!("<vt:lpwstr>{}</vt:lpwstr>", escape_xml(value)));
+        xml.push_str("</property>");
+        pid += 1;
+    }
+
+    xml.push_str("</Properties>");
+
+    Ok(xml.into_bytes())
+}
+
+/// Ensure _rels/.rels contains relationships for docProps files
+///
+/// Adds relationships for core.xml and custom.xml if they don't already exist
+fn ensure_docprops_relationships(rels_xml: &[u8]) -> Result<Vec<u8>, ExportError> {
+    let xml_str = String::from_utf8_lossy(rels_xml);
+
+    // Check if relationships already exist
+    let has_core = xml_str.contains("docProps/core.xml");
+    let has_custom = xml_str.contains("docProps/custom.xml");
+
+    if has_core && has_custom {
+        // Both already exist, return unchanged
+        return Ok(rels_xml.to_vec());
+    }
+
+    // Find the closing </Relationships> tag
+    let rels_close_pos = xml_str
+        .rfind("</Relationships>")
+        .ok_or_else(|| ExportError::Format("Could not find </Relationships> in _rels/.rels".to_string()))?;
+
+    // Find next available rId number
+    let mut max_rid = 0;
+    let mut search_pos = 0;
+    while let Some(rid_start) = xml_str[search_pos..].find(r#" Id="rId"#) {
+        let abs_start = search_pos + rid_start + r#" Id="rId"#.len();
+        // Extract digits after rId
+        let mut digits = String::new();
+        for ch in xml_str[abs_start..].chars() {
+            if ch.is_ascii_digit() {
+                digits.push(ch);
+            } else {
+                break;
+            }
+        }
+        if let Ok(num) = digits.parse::<i32>() {
+            max_rid = max_rid.max(num);
+        }
+        search_pos = abs_start;
+    }
+
+    let mut result = String::with_capacity(xml_str.len() + 500);
+    result.push_str(&xml_str[..rels_close_pos]);
+
+    // Add core.xml relationship if missing
+    if !has_core {
+        max_rid += 1;
+        result.push_str(&format!(
+            r#"<Relationship Id="rId{}" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>"#,
+            max_rid
+        ));
+    }
+
+    // Add custom.xml relationship if missing
+    if !has_custom {
+        max_rid += 1;
+        result.push_str(&format!(
+            r#"<Relationship Id="rId{}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>"#,
+            max_rid
+        ));
+    }
+
+    result.push_str(&xml_str[rels_close_pos..]);
+
+    Ok(result.into_bytes())
+}
+
+/// Ensure [Content_Types].xml contains Override entries for docProps files
+///
+/// Adds Override elements for core.xml and custom.xml if they don't already exist
+fn ensure_docprops_content_types(content_types_xml: &[u8]) -> Result<Vec<u8>, ExportError> {
+    let xml_str = String::from_utf8_lossy(content_types_xml);
+
+    // Check if overrides already exist
+    let has_core = xml_str.contains(r#"PartName="/docProps/core.xml""#);
+    let has_custom = xml_str.contains(r#"PartName="/docProps/custom.xml""#);
+
+    if has_core && has_custom {
+        // Both already exist, return unchanged
+        return Ok(content_types_xml.to_vec());
+    }
+
+    // Find the closing </Types> tag
+    let types_close_pos = xml_str
+        .rfind("</Types>")
+        .ok_or_else(|| ExportError::Format("Could not find </Types> in [Content_Types].xml".to_string()))?;
+
+    let mut result = String::with_capacity(xml_str.len() + 400);
+    result.push_str(&xml_str[..types_close_pos]);
+
+    // Add core.xml override if missing
+    if !has_core {
+        result.push_str(
+            r#"<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>"#
+        );
+    }
+
+    // Add custom.xml override if missing
+    if !has_custom {
+        result.push_str(
+            r#"<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>"#
+        );
+    }
+
+    result.push_str(&xml_str[types_close_pos..]);
+
+    Ok(result.into_bytes())
 }
 
 /// Inject content XML into document.xml, preserving template structure
