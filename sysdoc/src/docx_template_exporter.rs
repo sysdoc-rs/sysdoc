@@ -877,7 +877,7 @@ fn update_or_create_core_properties(
     let subject = if let Some(subtitle) = &metadata.subtitle {
         escape_xml(subtitle)
     } else {
-        escape_xml(&format!("{} - {}", metadata.doc_type, metadata.standard))
+        String::new()
     };
     let description = if let Some(desc) = &metadata.description {
         escape_xml(desc)

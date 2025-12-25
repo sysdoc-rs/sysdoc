@@ -15,7 +15,6 @@ document_id = "SDD-001"
 document_title = "Flight Control Software Design Description"
 
 # Optional subtitle for the document (used in DOCX dc:subject field)
-# If not provided, defaults to "<document_type> - <document_standard>"
 # document_subtitle = "Avionics Control System"
 
 # Optional description for the document (used in DOCX dc:description field)

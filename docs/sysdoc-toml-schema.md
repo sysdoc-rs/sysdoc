@@ -11,7 +11,7 @@ The `sysdoc.toml` file contains metadata about a systems engineering document. T
 | `system_id` | String | No | Optional system identifier (used in DOCX cp:keywords field) |
 | `document_id` | String | Yes | Unique identifier for the document (e.g., "SDD-001", "SRS-2024-001") |
 | `document_title` | String | Yes | Human-readable title of the document |
-| `document_subtitle` | String | No | Optional subtitle (used for dc:subject in DOCX, defaults to "type - standard") |
+| `document_subtitle` | String | No | Optional subtitle (used for dc:subject in DOCX) |
 | `document_description` | String | No | Optional description (used for dc:description in DOCX) |
 | `document_type` | String | Yes | Type of document (SSS, SSDD, SDD, SRS, ICD, STP, STD, STR, etc.) |
 | `document_standard` | String | Yes | Standard or DID the document follows (e.g., "DI-IPSC-81435B") |
@@ -101,7 +101,7 @@ The schema enforces:
 The configuration fields are mapped to DOCX metadata as follows:
 
 - `document_title` → `<dc:title>`
-- `document_subtitle` (or "{type} - {standard}") → `<dc:subject>`
-- `document_description` → `<dc:description>`
+- `document_subtitle` → `<dc:subject>` (empty if not provided)
+- `document_description` → `<dc:description>` (empty if not provided)
 - `system_id`, `document_id`, `document_type`, `document_standard` → `<cp:keywords>` (comma-separated)
 - `document_owner.name` → `<dc:creator>`
