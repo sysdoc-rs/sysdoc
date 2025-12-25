@@ -1,5 +1,5 @@
 document_id = "TEST-PNG-IMAGE"
-document_name = "PNG Image Test"
+document_title = "PNG Image Test"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "test"

@@ -1,5 +1,5 @@
 document_id = "TEST-BOLD"
-document_name = "Bold Test"
+document_title = "Bold Test"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "test"

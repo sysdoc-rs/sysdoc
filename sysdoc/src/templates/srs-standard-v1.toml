@@ -9,7 +9,7 @@ template_spec = "DI-IPSC-81433A"
 [files."sysdoc.toml"]
 content = """
 document_id = "SRS-XXX"
-document_name = "Software Requirements Specification"
+document_title = "Software Requirements Specification"
 document_type = "SRS"
 document_standard = "DI-IPSC-81433A"
 document_template = "srs-standard-v1"

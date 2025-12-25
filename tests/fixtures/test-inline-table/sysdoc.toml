@@ -1,5 +1,5 @@
 document_id = "TEST-INLINE-TABLE"
-document_name = "Inline Table Test"
+document_title = "Inline Table Test"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "test"

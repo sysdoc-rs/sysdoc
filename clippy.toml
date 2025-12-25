@@ -14,6 +14,6 @@ too-many-lines-threshold = 150
 # Increased to 4 for complex match expressions in parser
 excessive-nesting-threshold = 4
 
-# Allow struct field prefixes (e.g., document_id, document_name in DocumentConfig)
+# Allow struct field prefixes (e.g., document_id, document_title in DocumentConfig)
 # This improves clarity when deserializing from TOML
 allow-mixed-uninlined-format-args = true

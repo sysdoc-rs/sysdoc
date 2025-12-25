@@ -119,7 +119,7 @@ template_spec = "DI-IPSC-81435B"
 [files."sysdoc.toml"]
 content = """
 document_id = "SDD-XXX"
-document_name = "Software Design Description"
+document_title = "Software Design Description"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "sdd-standard-v1"

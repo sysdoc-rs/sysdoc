@@ -1,5 +1,5 @@
 document_id = "TEST-SVG-IMAGE"
-document_name = "SVG Image Test"
+document_title = "SVG Image Test"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "test"

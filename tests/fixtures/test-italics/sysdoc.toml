@@ -1,5 +1,5 @@
 document_id = "TEST-ITALICS"
-document_name = "Italics Test"
+document_title = "Italics Test"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "test"

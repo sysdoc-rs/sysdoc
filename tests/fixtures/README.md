@@ -91,7 +91,7 @@ Works on Windows, Linux, and macOS as a self-contained binary (no .NET runtime r
 1. Create a new directory: `test-<feature-name>/`
 2. Copy `sysdoc.toml` from an existing test and update:
    - `document_id`
-   - `document_name`
+   - `document_title`
    - Keep `docx_template_path = "../template.docx"`
 3. Add `src/01_test.md` with markdown testing the feature
 4. Add any required assets (images, CSV files)

@@ -9,7 +9,7 @@ template_spec = "DI-MISC-80508B"
 [files."sysdoc.toml"]
 content = """
 document_id = "TR-XXX"
-document_name = "Technical Report"
+document_title = "Technical Report"
 document_type = "TR"
 document_standard = "DI-MISC-80508B"
 document_template = "tr-standard-v1"

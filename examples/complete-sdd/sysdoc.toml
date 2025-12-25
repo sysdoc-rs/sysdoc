@@ -1,7 +1,7 @@
 # sysdoc.toml - Document Configuration for Complete SDD Example
 
 document_id = "SDD-EXAMPLE-001"
-document_name = "Complete SDD Example"
+document_title = "Complete SDD Example"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "sdd-standard-v1"

@@ -10,8 +10,8 @@ pub struct DocumentConfig {
     /// Unique identifier for the document
     pub document_id: String,
 
-    /// Human-readable document name
-    pub document_name: String,
+    /// Human-readable document title
+    pub document_title: String,
 
     /// Document owner/author information
     pub document_owner: Person,
@@ -111,7 +111,7 @@ mod tests {
     fn test_document_config_roundtrip() {
         let config = DocumentConfig {
             document_id: "SDD-001".to_string(),
-            document_name: "Flight Control Software Design Description".to_string(),
+            document_title: "Flight Control Software Design Description".to_string(),
             document_owner: Person {
                 name: "John Doe".to_string(),
                 email: "john.doe@example.com".to_string(),
@@ -135,7 +135,7 @@ mod tests {
 
         assert_eq!(parsed.document_id, "SDD-001");
         assert_eq!(
-            parsed.document_name,
+            parsed.document_title,
             "Flight Control Software Design Description"
         );
         assert_eq!(parsed.document_owner.name, "John Doe");
@@ -151,7 +151,7 @@ mod tests {
     fn test_parse_example_toml() {
         let toml_content = r#"
 document_id = "SRS-2024-001"
-document_name = "Satellite Communication System Requirements"
+document_title = "Satellite Communication System Requirements"
 document_type = "SRS"
 document_standard = "DI-IPSC-81433A"
 document_template = "srs-standard-v2"

@@ -9,7 +9,7 @@ template_spec = "DI-IPSC-81431A"
 [files."sysdoc.toml"]
 content = """
 document_id = "SSS-XXX"
-document_name = "System/Subsystem Specification"
+document_title = "System/Subsystem Specification"
 document_type = "SSS"
 document_standard = "DI-IPSC-81431A"
 document_template = "sss-standard-v1"

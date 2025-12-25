@@ -1,5 +1,5 @@
 document_id = "TEST-CSV-TABLE"
-document_name = "CSV Table Test"
+document_title = "CSV Table Test"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "test"

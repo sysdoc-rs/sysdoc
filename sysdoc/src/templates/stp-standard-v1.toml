@@ -9,7 +9,7 @@ template_spec = "DI-IPSC-81438"
 [files."sysdoc.toml"]
 content = """
 document_id = "STP-XXX"
-document_name = "Software Test Plan"
+document_title = "Software Test Plan"
 document_type = "STP"
 document_standard = "DI-IPSC-81438"
 document_template = "stp-standard-v1"

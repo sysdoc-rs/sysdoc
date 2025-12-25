@@ -9,7 +9,7 @@ The `sysdoc.toml` file contains metadata about a systems engineering document. T
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `document_id` | String | Yes | Unique identifier for the document (e.g., "SDD-001", "SRS-2024-001") |
-| `document_name` | String | Yes | Human-readable name of the document |
+| `document_title` | String | Yes | Human-readable title of the document |
 | `document_type` | String | Yes | Type of document (SSS, SSDD, SDD, SRS, ICD, STP, STD, STR, etc.) |
 | `document_standard` | String | Yes | Standard or DID the document follows (e.g., "DI-IPSC-81435B") |
 | `document_template` | String | Yes | Template used to create the document (for tracking purposes) |
@@ -27,7 +27,7 @@ The `sysdoc.toml` file contains metadata about a systems engineering document. T
 
 ```toml
 document_id = "SDD-001"
-document_name = "Flight Control Software Design Description"
+document_title = "Flight Control Software Design Description"
 document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "sdd-standard-v1"
@@ -75,7 +75,7 @@ use sysdoc::document_config::DocumentConfig;
 // Load configuration
 let config = DocumentConfig::load("sysdoc.toml")?;
 
-println!("Document: {} ({})", config.document_name, config.document_id);
+println!("Document: {} ({})", config.document_title, config.document_id);
 println!("Owner: {} <{}>", config.document_owner.name, config.document_owner.email);
 
 // Save configuration
