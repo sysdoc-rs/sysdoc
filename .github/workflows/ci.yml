@@ -129,9 +129,6 @@ jobs:
     - name: Build sysdoc
       run: cargo build --release
 
-    - name: Generate test template
-      run: cargo run --bin generate_test_template
-
     - name: Run DOCX validation
       run: |
         chmod +x scripts/validate-docx.sh

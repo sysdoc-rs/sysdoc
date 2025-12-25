@@ -13,6 +13,7 @@ document_name = "System/Subsystem Specification"
 document_type = "SSS"
 document_standard = "DI-IPSC-81431A"
 document_template = "sss-standard-v1"
+docx_template_path = "template.docx"
 
 [document_owner]
 name = "Your Name"

@@ -171,29 +171,26 @@ for test_case in "${TEST_CASES[@]}"; do
 
     # OOXML-Validator returns empty array [] for valid documents
     # or array of error objects for invalid documents
-    if echo "$VALIDATION_OUTPUT" | grep -qE '^\[\s*\]$'; then
+    # Normalize the output by removing all whitespace for comparison
+    TRIMMED=$(echo "$VALIDATION_OUTPUT" | tr -d '[:space:]')
+
+    if [[ -z "$TRIMMED" || "$TRIMMED" == "[]" ]]; then
+        # Empty output or empty array means valid document
         echo -e "${GREEN}PASSED${NC}"
         PASSED=$((PASSED + 1))
-    elif echo "$VALIDATION_OUTPUT" | grep -qE '^\[.*"Description"'; then
-        # JSON array with error objects
+    elif echo "$VALIDATION_OUTPUT" | grep -q '"Description"'; then
+        # JSON with Description field indicates validation errors
         echo -e "${RED}FAILED${NC}"
         FAILED=$((FAILED + 1))
         FAILED_TESTS="$FAILED_TESTS\n  - $test_case"
         echo "    Validation errors:"
         echo "$VALIDATION_OUTPUT" | head -20 | sed 's/^/    /'
     else
-        # Check if output is empty or just whitespace (valid)
-        TRIMMED=$(echo "$VALIDATION_OUTPUT" | tr -d '[:space:]')
-        if [[ -z "$TRIMMED" || "$TRIMMED" == "[]" ]]; then
-            echo -e "${GREEN}PASSED${NC}"
-            PASSED=$((PASSED + 1))
-        else
-            # Unknown output format, treat as error
-            echo -e "${YELLOW}UNKNOWN${NC}"
-            echo "    Output: $VALIDATION_OUTPUT"
-            FAILED=$((FAILED + 1))
-            FAILED_TESTS="$FAILED_TESTS\n  - $test_case (unknown validator output)"
-        fi
+        # Unknown output format, treat as error
+        echo -e "${YELLOW}UNKNOWN${NC}"
+        echo "    Output: $VALIDATION_OUTPUT"
+        FAILED=$((FAILED + 1))
+        FAILED_TESTS="$FAILED_TESTS\n  - $test_case (unknown validator output)"
     fi
 done
 

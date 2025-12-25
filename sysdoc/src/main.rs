@@ -136,7 +136,13 @@ fn handle_init_command(
     // Create all files from the template
     let files_created = create_template_files(&config, &target_path, &title)?;
 
-    println!("\n✓ Successfully created {} files", files_created);
+    // Create binary files from the template
+    let binary_files_created = create_binary_files(&template_info, &target_path)?;
+
+    println!(
+        "\n✓ Successfully created {} files",
+        files_created + binary_files_created
+    );
     println!("\nNext steps:");
     println!("  1. Edit sysdoc.toml to configure your document");
     println!("  2. Fill in the markdown files in the src/ directory");
@@ -358,6 +364,25 @@ fn create_single_file(
         .with_context(|| format!("Failed to write file {}", full_path.display()))?;
 
     Ok(())
+}
+
+/// Create binary files from the template
+fn create_binary_files(
+    template_info: &templates::TemplateInfo,
+    target_path: &std::path::Path,
+) -> Result<usize> {
+    let mut files_created = 0;
+
+    for (file_name, content) in &template_info.binary_files {
+        let full_path = target_path.join(file_name);
+
+        std::fs::write(&full_path, content)
+            .with_context(|| format!("Failed to write binary file {}", full_path.display()))?;
+
+        files_created += 1;
+    }
+
+    Ok(files_created)
 }
 
 /// Print build information

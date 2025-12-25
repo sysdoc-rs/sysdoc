@@ -13,6 +13,7 @@ document_name = "Software Test Plan"
 document_type = "STP"
 document_standard = "DI-IPSC-81438"
 document_template = "stp-standard-v1"
+docx_template_path = "template.docx"
 
 [document_owner]
 name = "Your Name"
