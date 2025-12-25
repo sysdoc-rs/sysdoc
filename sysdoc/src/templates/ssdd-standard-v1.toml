@@ -8,6 +8,7 @@ template_spec = "DI-IPSC-81432A"
 
 [files."sysdoc.toml"]
 content = """
+# system_id = "SYSTEM-XXX"
 document_id = "SSDD-XXX"
 document_title = "System/Subsystem Design Description"
 # document_subtitle = "Optional subtitle"

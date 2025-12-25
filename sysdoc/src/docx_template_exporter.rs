@@ -861,15 +861,14 @@ fn update_or_create_core_properties(
     metadata: &DocumentMetadata,
 ) -> Result<Vec<u8>, ExportError> {
     // Extract preserved fields from existing XML
-    let (keywords, last_modified_by, revision) = if let Some(xml_bytes) = existing_xml {
+    let (last_modified_by, revision) = if let Some(xml_bytes) = existing_xml {
         let xml_str = String::from_utf8_lossy(xml_bytes);
         (
-            extract_xml_tag_content(&xml_str, "cp:keywords").unwrap_or_default(),
             extract_xml_tag_content(&xml_str, "cp:lastModifiedBy").unwrap_or_default(),
             extract_xml_tag_content(&xml_str, "cp:revision").unwrap_or_else(|| "1".to_string()),
         )
     } else {
-        (String::new(), String::new(), "1".to_string())
+        (String::new(), "1".to_string())
     };
 
     // Prepare values
@@ -886,6 +885,16 @@ fn update_or_create_core_properties(
         String::new()
     };
 
+    // Build keywords from system_id, document_id, document_type, and document_standard
+    let mut keywords_parts = Vec::new();
+    if let Some(sys_id) = &metadata.system_id {
+        keywords_parts.push(sys_id.as_str());
+    }
+    keywords_parts.push(&metadata.document_id);
+    keywords_parts.push(&metadata.doc_type);
+    keywords_parts.push(&metadata.standard);
+    let keywords = escape_xml(&keywords_parts.join(", "));
+
     // Build XML
     let mut xml = String::with_capacity(1024);
     xml.push_str(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#);
@@ -901,10 +910,7 @@ fn update_or_create_core_properties(
     xml.push_str(&format!("<dc:title>{}</dc:title>", title));
     xml.push_str(&format!("<dc:subject>{}</dc:subject>", subject));
     xml.push_str(&format!("<dc:creator>{}</dc:creator>", creator));
-    xml.push_str(&format!(
-        "<cp:keywords>{}</cp:keywords>",
-        escape_xml(&keywords)
-    ));
+    xml.push_str(&format!("<cp:keywords>{}</cp:keywords>", keywords));
     xml.push_str(&format!(
         "<dc:description>{}</dc:description>",
         escape_xml(&description)

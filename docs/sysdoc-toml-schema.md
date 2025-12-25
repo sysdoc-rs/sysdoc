@@ -8,6 +8,7 @@ The `sysdoc.toml` file contains metadata about a systems engineering document. T
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `system_id` | String | No | Optional system identifier (used in DOCX cp:keywords field) |
 | `document_id` | String | Yes | Unique identifier for the document (e.g., "SDD-001", "SRS-2024-001") |
 | `document_title` | String | Yes | Human-readable title of the document |
 | `document_subtitle` | String | No | Optional subtitle (used for dc:subject in DOCX, defaults to "type - standard") |
@@ -28,6 +29,7 @@ The `sysdoc.toml` file contains metadata about a systems engineering document. T
 ## Example
 
 ```toml
+system_id = "FCS-2024"
 document_id = "SDD-001"
 document_title = "Flight Control Software Design Description"
 document_subtitle = "Avionics Control System"
@@ -89,6 +91,17 @@ config.save("sysdoc.toml")?;
 ## Validation
 
 The schema enforces:
-- Most fields are required, except `document_subtitle` and `document_description` which are optional
+
+- Most fields are required, except `system_id`, `document_subtitle`, and `document_description` which are optional
 - Email addresses should be valid (enforced by application logic, not schema)
 - Document IDs should be unique within your organization (enforced by process, not schema)
+
+## DOCX Metadata Mapping
+
+The configuration fields are mapped to DOCX metadata as follows:
+
+- `document_title` → `<dc:title>`
+- `document_subtitle` (or "{type} - {standard}") → `<dc:subject>`
+- `document_description` → `<dc:description>`
+- `system_id`, `document_id`, `document_type`, `document_standard` → `<cp:keywords>` (comma-separated)
+- `document_owner.name` → `<dc:creator>`

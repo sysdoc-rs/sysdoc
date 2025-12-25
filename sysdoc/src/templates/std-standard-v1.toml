@@ -8,6 +8,7 @@ template_spec = "DI-IPSC-81439"
 
 [files."sysdoc.toml"]
 content = """
+# system_id = "SYSTEM-XXX"
 document_id = "STD-XXX"
 document_title = "Software Test Description"
 # document_subtitle = "Optional subtitle"

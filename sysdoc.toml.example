@@ -3,6 +3,10 @@
 # This file defines the metadata for a sysdoc systems engineering document.
 # Place this file at the root of your document repository, next to the src/ folder.
 
+# Optional system identifier this document belongs to
+# Used in DOCX keywords along with document_id, document_type, and document_standard
+# system_id = "FCS-2024"
+
 # Unique identifier for this document
 # Examples: "SDD-001", "SRS-2024-001", "ICD-FCS-001"
 document_id = "SDD-001"

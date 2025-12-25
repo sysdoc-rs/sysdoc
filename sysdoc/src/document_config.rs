@@ -7,6 +7,9 @@ use std::path::Path;
 /// Main document configuration from sysdoc.toml
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentConfig {
+    /// Optional system identifier that this document belongs to
+    pub system_id: Option<String>,
+
     /// Unique identifier for the document
     pub document_id: String,
 
@@ -116,6 +119,7 @@ mod tests {
     #[test]
     fn test_document_config_roundtrip() {
         let config = DocumentConfig {
+            system_id: Some("FCS-2024".to_string()),
             document_id: "SDD-001".to_string(),
             document_title: "Flight Control Software Design Description".to_string(),
             document_subtitle: Some("Avionics Control System".to_string()),
@@ -160,6 +164,7 @@ mod tests {
     #[test]
     fn test_parse_example_toml() {
         let toml_content = r#"
+system_id = "SATCOM-2024"
 document_id = "SRS-2024-001"
 document_title = "Satellite Communication System Requirements"
 document_subtitle = "Ground Station Interface"

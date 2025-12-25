@@ -79,6 +79,8 @@ impl UnifiedDocument {
 /// Document metadata
 #[derive(Debug, Clone)]
 pub struct DocumentMetadata {
+    /// System identifier (if any)
+    pub system_id: Option<String>,
     /// Document unique identifier
     pub document_id: String,
     /// Document title
@@ -175,6 +177,7 @@ mod tests {
 
     fn test_metadata() -> DocumentMetadata {
         DocumentMetadata {
+            system_id: None,
             document_id: "TEST-001".to_string(),
             title: "Test Document".to_string(),
             subtitle: None,
