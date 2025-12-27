@@ -1917,7 +1917,7 @@ End of document."#;
         assert_eq!(sections.len(), 2);
         assert_eq!(sections[0].heading_text, "Introduction");
         assert_eq!(sections[1].heading_text, "Features");
-        assert!(sections[0].content.len() >= 1);
+        assert!(!sections[0].content.is_empty());
         assert!(sections[1].content.len() >= 4);
     }
 
@@ -1962,7 +1962,7 @@ End of document."#;
 
         match &sections[0].content[0] {
             MarkdownBlock::BlockQuote(blocks) => {
-                assert!(blocks.len() >= 1, "Blockquote should contain blocks");
+                assert!(!blocks.is_empty(), "Blockquote should contain blocks");
             }
             _ => panic!("Expected BlockQuote"),
         }

@@ -175,13 +175,14 @@ mod tests {
         let mut html_tags = Vec::new();
 
         for event in parser {
-            if let Event::Html(html) = event {
-                let html_str = html.to_string();
-                if html_str.trim().starts_with("<!--") {
-                    comments.push(html_str);
-                } else {
-                    html_tags.push(html_str);
+            match event {
+                Event::Html(html) if html.trim().starts_with("<!--") => {
+                    comments.push(html.to_string());
                 }
+                Event::Html(html) => {
+                    html_tags.push(html.to_string());
+                }
+                _ => {}
             }
         }
 
@@ -223,24 +224,18 @@ fn main() {}
 
         for event in parser {
             match event {
-                Event::Start(Tag::CodeBlock(kind)) => {
-                    if let pulldown_cmark::CodeBlockKind::Fenced(lang) = kind {
-                        if lang.as_ref() == "sysdoc" {
-                            in_sysdoc_block = true;
-                            current_text.clear();
-                        }
-                    }
+                Event::Start(Tag::CodeBlock(pulldown_cmark::CodeBlockKind::Fenced(lang)))
+                    if lang.as_ref() == "sysdoc" =>
+                {
+                    in_sysdoc_block = true;
+                    current_text.clear();
                 }
-                Event::End(pulldown_cmark::TagEnd::CodeBlock) => {
-                    if in_sysdoc_block {
-                        sysdoc_blocks.push(current_text.clone());
-                        in_sysdoc_block = false;
-                    }
+                Event::End(pulldown_cmark::TagEnd::CodeBlock) if in_sysdoc_block => {
+                    sysdoc_blocks.push(current_text.clone());
+                    in_sysdoc_block = false;
                 }
-                Event::Text(text) => {
-                    if in_sysdoc_block {
-                        current_text.push_str(&text);
-                    }
+                Event::Text(text) if in_sysdoc_block => {
+                    current_text.push_str(&text);
                 }
                 _ => {}
             }

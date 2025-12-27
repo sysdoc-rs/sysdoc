@@ -175,15 +175,15 @@ mod tests {
     fn test_parse_filename() {
         let path = Path::new("test.md");
 
-        let (num, title) = parse_filename("01.01_purpose", &path).unwrap();
+        let (num, title) = parse_filename("01.01_purpose", path).unwrap();
         assert_eq!(num, "01.01");
         assert_eq!(title, "Purpose");
 
-        let (num, title) = parse_filename("02.03_system-overview", &path).unwrap();
+        let (num, title) = parse_filename("02.03_system-overview", path).unwrap();
         assert_eq!(num, "02.03");
         assert_eq!(title, "System Overview");
 
-        let (num, title) = parse_filename("03.01.02_detailed-design", &path).unwrap();
+        let (num, title) = parse_filename("03.01.02_detailed-design", path).unwrap();
         assert_eq!(num, "03.01.02");
         assert_eq!(title, "Detailed Design");
     }
