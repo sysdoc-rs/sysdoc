@@ -13,6 +13,7 @@ use crate::unified_document::UnifiedDocument;
 use genpdf::elements::{Break, Image, PageBreak, Paragraph};
 use genpdf::style::Style;
 use genpdf::{Alignment, Element};
+use image::GenericImageView;
 use std::path::Path;
 use thiserror::Error;
 
@@ -21,7 +22,8 @@ use thiserror::Error;
 const FONT_REGULAR: &[u8] = include_bytes!("../../external/fonts/LiberationSans-Regular.ttf");
 const FONT_BOLD: &[u8] = include_bytes!("../../external/fonts/LiberationSans-Bold.ttf");
 const FONT_ITALIC: &[u8] = include_bytes!("../../external/fonts/LiberationSans-Italic.ttf");
-const FONT_BOLD_ITALIC: &[u8] = include_bytes!("../../external/fonts/LiberationSans-BoldItalic.ttf");
+const FONT_BOLD_ITALIC: &[u8] =
+    include_bytes!("../../external/fonts/LiberationSans-BoldItalic.ttf");
 
 /// PDF export errors
 #[derive(Error, Debug)]
@@ -146,9 +148,7 @@ fn add_title_page(
     // Add description if present
     if let Some(description) = &doc.metadata.description {
         pdf_doc.push(Break::new(1.5));
-        pdf_doc.push(
-            Paragraph::new("Description:").styled(Style::new().bold().with_font_size(11)),
-        );
+        pdf_doc.push(Paragraph::new("Description:").styled(Style::new().bold().with_font_size(11)));
         pdf_doc.push(Break::new(0.3));
         pdf_doc.push(Paragraph::new(description).styled(Style::new().with_font_size(11)));
     }
@@ -169,16 +169,18 @@ fn add_table_of_contents(
     doc: &UnifiedDocument,
 ) -> Result<(), PdfExportError> {
     // TOC title
-    pdf_doc.push(
-        Paragraph::new("Table of Contents").styled(Style::new().bold().with_font_size(20)),
-    );
+    pdf_doc
+        .push(Paragraph::new("Table of Contents").styled(Style::new().bold().with_font_size(20)));
 
     pdf_doc.push(Break::new(1.0));
 
     // Add each section to TOC
     for section in &doc.sections {
         let indent = "  ".repeat(section.heading_level.saturating_sub(1));
-        let toc_entry = format!("{}{} {}", indent, section.section_number, section.heading_text);
+        let toc_entry = format!(
+            "{}{} {}",
+            indent, section.section_number, section.heading_text
+        );
 
         // Smaller font for deeper levels
         let font_size = (12 - section.heading_level.saturating_sub(1).min(3)) as u8;
@@ -209,9 +211,8 @@ fn add_section(
         _ => 12,
     };
 
-    pdf_doc.push(
-        Paragraph::new(heading_text).styled(Style::new().bold().with_font_size(font_size)),
-    );
+    pdf_doc
+        .push(Paragraph::new(heading_text).styled(Style::new().bold().with_font_size(font_size)));
 
     pdf_doc.push(Break::new(0.5));
 
@@ -224,10 +225,7 @@ fn add_section(
 }
 
 /// Add a markdown block to the PDF
-fn add_block(
-    pdf_doc: &mut genpdf::Document,
-    block: &MarkdownBlock,
-) -> Result<(), PdfExportError> {
+fn add_block(pdf_doc: &mut genpdf::Document, block: &MarkdownBlock) -> Result<(), PdfExportError> {
     match block {
         MarkdownBlock::Paragraph(runs) => {
             let para = text_runs_to_paragraph(runs);
@@ -298,9 +296,7 @@ fn add_block(
                     );
                 }
             } else {
-                pdf_doc.push(
-                    Paragraph::new("[CSV file not found]").styled(Style::new().italic()),
-                );
+                pdf_doc.push(Paragraph::new("[CSV file not found]").styled(Style::new().italic()));
             }
             pdf_doc.push(Break::new(0.5));
         }
@@ -611,10 +607,43 @@ fn load_and_embed_image(
         }
     };
 
+    // Calculate appropriate scale based on image dimensions
+    // Get the dimensions from the DynamicImage before we convert it
+    let (img_width, _img_height) = match format {
+        ImageFormat::Jpeg => {
+            let dynamic_image = image::load_from_memory_with_format(&image_bytes, image::ImageFormat::Jpeg)
+                .map_err(|e| PdfExportError::PdfError(format!("Failed to get JPEG dimensions: {}", e)))?;
+            dynamic_image.dimensions()
+        }
+        ImageFormat::Png => {
+            let dynamic_image = image::load_from_memory_with_format(&image_bytes, image::ImageFormat::Png)
+                .map_err(|e| PdfExportError::PdfError(format!("Failed to get PNG dimensions: {}", e)))?;
+            dynamic_image.dimensions()
+        }
+        _ => (800, 600), // Default for unsupported formats
+    };
+
     // Add the image with center alignment
-    // Note: genpdf will handle scaling automatically to fit page width
     let mut img_element = image;
     img_element.set_alignment(Alignment::Center);
+
+    // Calculate scale to fit page width
+    // genpdf interprets images at 300 DPI by default: 1 pixel = 1/300 inch = 25.4/300 mm
+    // Target width: 170mm (A4 with margins leaves ~180mm, use 170mm for safety)
+    let mm_per_pixel = 25.4 / 300.0; // 0.0847 mm per pixel at 300 DPI
+    let image_width_mm = img_width as f64 * mm_per_pixel;
+    let target_width_mm = 170.0;
+
+    // Calculate scale factor to fit within target width
+    let scale_factor = if image_width_mm > target_width_mm {
+        // Scale down large images
+        target_width_mm / image_width_mm
+    } else {
+        // Scale up small images, but cap at 2x to avoid pixelation
+        (target_width_mm / image_width_mm).min(2.0)
+    };
+
+    img_element.set_scale(genpdf::Scale::new(scale_factor, scale_factor));
 
     pdf_doc.push(img_element);
 
