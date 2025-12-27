@@ -12,6 +12,8 @@ pub enum OutputFormat {
     Markdown,
     /// HTML with embedded images
     Html,
+    /// PDF with embedded images and table of contents
+    Pdf,
 }
 
 /// DOCX export engine selection

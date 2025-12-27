@@ -27,6 +27,7 @@ docx-rs = { workspace = true }
 imagesize = { workspace = true }
 zip = { workspace = true }
 base64 = { workspace = true }
+genpdf = { workspace = true }
 
 [dev-dependencies]
 pulldown-cmark = { workspace = true, features = ["default"] }
