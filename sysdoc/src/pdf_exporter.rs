@@ -30,6 +30,7 @@ const FONT_BOLD_ITALIC: &[u8] =
 
 /// PDF export errors
 #[derive(Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum PdfExportError {
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
@@ -203,7 +204,12 @@ impl genpdf::PageDecorator for PageNumberFooterDecorator {
         // Reduce height to account for both header and footer
         area.set_size(Size::new(
             area.size().width,
-            area.size().height - header_height - header_spacing - footer_height - footer_spacing - Mm::from(5.0),
+            area.size().height
+                - header_height
+                - header_spacing
+                - footer_height
+                - footer_spacing
+                - Mm::from(5.0),
         ));
 
         Ok(area)
@@ -238,9 +244,9 @@ pub fn to_pdf(doc: &UnifiedDocument, output_path: &Path) -> Result<(), PdfExport
         add_all_content(&mut pdf_doc, doc, None)?;
 
         // Render to temporary file
-        pdf_doc
-            .render_to_file(&temp_file)
-            .map_err(|e| PdfExportError::PdfError(format!("Failed to render PDF for page counting: {}", e)))?;
+        pdf_doc.render_to_file(&temp_file).map_err(|e| {
+            PdfExportError::PdfError(format!("Failed to render PDF for page counting: {}", e))
+        })?;
 
         // Count pages by reading the temporary PDF
         count_pdf_pages(&temp_file)?
@@ -265,9 +271,9 @@ pub fn to_pdf(doc: &UnifiedDocument, output_path: &Path) -> Result<(), PdfExport
         add_all_content(&mut pdf_doc, doc, Some(section_tracker.clone()))?;
 
         let temp_file2 = temp_dir.join(format!("sysdoc_temp2_{}.pdf", std::process::id()));
-        pdf_doc
-            .render_to_file(&temp_file2)
-            .map_err(|e| PdfExportError::PdfError(format!("Failed to render PDF for section tracking: {}", e)))?;
+        pdf_doc.render_to_file(&temp_file2).map_err(|e| {
+            PdfExportError::PdfError(format!("Failed to render PDF for section tracking: {}", e))
+        })?;
 
         let _ = std::fs::remove_file(&temp_file2);
         section_tracker.get_pages()
@@ -337,15 +343,18 @@ fn count_pdf_pages(pdf_path: &Path) -> Result<usize, PdfExportError> {
     if page_count == 0 {
         // Try counting page objects by looking for page dictionaries
         // Look for "/Type /Page\n" or "/Type /Page " patterns
-        page_count = pdf_str.split("/Type").filter(|s| {
-            let trimmed = s.trim_start();
-            trimmed.starts_with("/Page") || trimmed.starts_with(" /Page")
-        }).count();
+        page_count = pdf_str
+            .split("/Type")
+            .filter(|s| {
+                let trimmed = s.trim_start();
+                trimmed.starts_with("/Page") || trimmed.starts_with(" /Page")
+            })
+            .count();
     }
 
     if page_count == 0 {
         return Err(PdfExportError::PdfError(
-            "Failed to count pages in PDF - no page objects found".to_string()
+            "Failed to count pages in PDF - no page objects found".to_string(),
         ));
     }
 
@@ -353,7 +362,8 @@ fn count_pdf_pages(pdf_path: &Path) -> Result<usize, PdfExportError> {
 }
 
 /// Helper function to create font family from embedded fonts
-fn create_font_family() -> Result<genpdf::fonts::FontFamily<genpdf::fonts::FontData>, PdfExportError> {
+fn create_font_family() -> Result<genpdf::fonts::FontFamily<genpdf::fonts::FontData>, PdfExportError>
+{
     let font_regular = genpdf::fonts::FontData::new(FONT_REGULAR.to_vec(), None)
         .map_err(|e| PdfExportError::PdfError(format!("Failed to load regular font: {}", e)))?;
     let font_bold = genpdf::fonts::FontData::new(FONT_BOLD.to_vec(), None)
@@ -459,6 +469,55 @@ fn add_metadata_row(pdf_doc: &mut genpdf::Document, label: &str, value: &str) {
     pdf_doc.push(Break::new(0.2));
 }
 
+/// Helper function to add a single TOC entry with page number
+fn add_toc_entry_with_page_number(
+    pdf_doc: &mut genpdf::Document,
+    section: &MarkdownSection,
+    page: usize,
+    toc_font_size: u8,
+) -> Result<(), PdfExportError> {
+    let indent = "  ".repeat(section.heading_level.saturating_sub(1));
+
+    // Create a two-column table for proper alignment
+    // Column widths: 93% for content (with dots), 7% for page number
+    let mut table = TableLayout::new(vec![13, 1]);
+    table.set_cell_decorator(genpdf::elements::FrameCellDecorator::new(
+        false, false, false,
+    ));
+
+    let mut row = table.row();
+
+    // Left cell: section title with dots
+    let section_text = format!(
+        "{}{} {}",
+        indent, section.section_number, section.heading_text
+    );
+
+    // Estimate dots: reduce count for longer titles and deeper indents
+    let base_dots: usize = 80;
+    let indent_reduction = section.heading_level.saturating_sub(1) * 8;
+    let title_length_reduction = section_text.len().min(60);
+    let dots_count = base_dots
+        .saturating_sub(indent_reduction)
+        .saturating_sub(title_length_reduction / 2)
+        .max(3);
+
+    let dots = " ".to_string() + &".".repeat(dots_count);
+    let left_cell = format!("{}{}", section_text, dots);
+    row = row.element(Paragraph::new(left_cell).styled(Style::new().with_font_size(toc_font_size)));
+
+    // Right cell: page number (right-aligned)
+    let mut page_para = Paragraph::new(format!("{}", page));
+    page_para.set_alignment(Alignment::Right);
+    row = row.element(page_para.styled(Style::new().with_font_size(toc_font_size)));
+
+    row.push()
+        .map_err(|e| PdfExportError::PdfError(format!("Failed to add TOC row: {}", e)))?;
+
+    pdf_doc.push(table);
+    Ok(())
+}
+
 /// Add table of contents to the PDF
 fn add_table_of_contents(
     pdf_doc: &mut genpdf::Document,
@@ -481,44 +540,25 @@ fn add_table_of_contents(
 
         if let Some(pages) = section_pages {
             if let Some(page) = pages.get(&section_id) {
-                // Create a two-column table for proper alignment
-                // Column widths: 93% for content (with dots), 7% for page number
-                let mut table = TableLayout::new(vec![13, 1]);
-                table.set_cell_decorator(genpdf::elements::FrameCellDecorator::new(false, false, false));
-
-                let mut row = table.row();
-
-                // Left cell: section title with dots
-                // Calculate approximate dots needed based on indentation
-                let section_text = format!("{}{} {}", indent, section.section_number, section.heading_text);
-
-                // Estimate dots: reduce count for longer titles and deeper indents
-                let base_dots: usize = 80;
-                let indent_reduction = section.heading_level.saturating_sub(1) * 8;
-                let title_length_reduction = section_text.len().min(60);
-                let dots_count = base_dots.saturating_sub(indent_reduction).saturating_sub(title_length_reduction / 2).max(3);
-
-                let dots = " ".to_string() + &".".repeat(dots_count);
-                let left_cell = format!("{}{}", section_text, dots);
-                row = row.element(Paragraph::new(left_cell).styled(Style::new().with_font_size(toc_font_size)));
-
-                // Right cell: page number (right-aligned)
-                let mut page_para = Paragraph::new(format!("{}", page));
-                page_para.set_alignment(Alignment::Right);
-                row = row.element(page_para.styled(Style::new().with_font_size(toc_font_size)));
-
-                row.push().map_err(|e| PdfExportError::PdfError(format!("Failed to add TOC row: {}", e)))?;
-
-                pdf_doc.push(table);
+                add_toc_entry_with_page_number(pdf_doc, section, *page, toc_font_size)?;
             } else {
                 // No page number available
-                let toc_entry = format!("{}{} {}", indent, section.section_number, section.heading_text);
-                pdf_doc.push(Paragraph::new(toc_entry).styled(Style::new().with_font_size(toc_font_size)));
+                let toc_entry = format!(
+                    "{}{} {}",
+                    indent, section.section_number, section.heading_text
+                );
+                pdf_doc.push(
+                    Paragraph::new(toc_entry).styled(Style::new().with_font_size(toc_font_size)),
+                );
             }
         } else {
             // No page numbers at all (used during tracking pass)
-            let toc_entry = format!("{}{} {}", indent, section.section_number, section.heading_text);
-            pdf_doc.push(Paragraph::new(toc_entry).styled(Style::new().with_font_size(toc_font_size)));
+            let toc_entry = format!(
+                "{}{} {}",
+                indent, section.section_number, section.heading_text
+            );
+            pdf_doc
+                .push(Paragraph::new(toc_entry).styled(Style::new().with_font_size(toc_font_size)));
         }
 
         pdf_doc.push(Break::new(0.1));
@@ -659,24 +699,18 @@ fn add_block(pdf_doc: &mut genpdf::Document, block: &MarkdownBlock) -> Result<()
                 );
             } else {
                 // Try to load and embed the actual image
-                match load_and_embed_image(pdf_doc, absolute_path, alt_text, format) {
-                    Ok(_) => {
-                        // Image embedded successfully
-                        // Add caption if alt text is provided
-                        if !alt_text.is_empty() {
-                            let mut caption = Paragraph::new(format!("Figure: {}", alt_text));
-                            caption.set_alignment(Alignment::Center);
-                            pdf_doc.push(caption.styled(Style::new().with_font_size(10).italic()));
-                        }
-                    }
-                    Err(e) => {
-                        // Fall back to placeholder if image loading fails
-                        log::warn!("Failed to embed image {}: {}", path.display(), e);
-                        let placeholder = format!("[Image: {} (failed to load: {})]", alt_text, e);
-                        let mut img_para = Paragraph::new(placeholder);
-                        img_para.set_alignment(Alignment::Center);
-                        pdf_doc.push(img_para.styled(Style::new().italic()));
-                    }
+                if let Err(e) = load_and_embed_image(pdf_doc, absolute_path, alt_text, format) {
+                    // Fall back to placeholder if image loading fails
+                    log::warn!("Failed to embed image {}: {}", path.display(), e);
+                    let placeholder = format!("[Image: {} (failed to load: {})]", alt_text, e);
+                    let mut img_para = Paragraph::new(placeholder);
+                    img_para.set_alignment(Alignment::Center);
+                    pdf_doc.push(img_para.styled(Style::new().italic()));
+                } else if !alt_text.is_empty() {
+                    // Image embedded successfully - add caption if alt text is provided
+                    let mut caption = Paragraph::new(format!("Figure: {}", alt_text));
+                    caption.set_alignment(Alignment::Center);
+                    pdf_doc.push(caption.styled(Style::new().with_font_size(10).italic()));
                 }
             }
             pdf_doc.push(Break::new(0.5));
@@ -704,31 +738,46 @@ fn add_list_items(
     start_number: u64,
 ) -> Result<(), PdfExportError> {
     for (idx, item) in items.iter().enumerate() {
+        let item_number = start_number + idx as u64;
         for (block_idx, block) in item.content.iter().enumerate() {
             if block_idx == 0 {
                 // First block gets bullet/number
-                let prefix = if ordered {
-                    format!("{}. ", start_number + idx as u64)
-                } else {
-                    "• ".to_string()
-                };
-
-                if let MarkdownBlock::Paragraph(runs) = block {
-                    let mut para = Paragraph::new(prefix);
-                    // Add text runs
-                    for run in runs {
-                        para.push_styled(&run.text, get_text_style(run));
-                    }
-                    pdf_doc.push(para);
-                } else {
-                    pdf_doc.push(Paragraph::new(prefix));
-                    add_block(pdf_doc, block)?;
-                }
+                let prefix = get_list_prefix(ordered, item_number);
+                add_first_list_block(pdf_doc, block, &prefix)?;
             } else {
                 // Subsequent blocks are indented (simulated with spaces)
                 add_block(pdf_doc, block)?;
             }
         }
+    }
+    Ok(())
+}
+
+/// Get the prefix for a list item (bullet or number)
+fn get_list_prefix(ordered: bool, number: u64) -> String {
+    if ordered {
+        format!("{}. ", number)
+    } else {
+        "• ".to_string()
+    }
+}
+
+/// Add the first block of a list item with its prefix
+fn add_first_list_block(
+    pdf_doc: &mut genpdf::Document,
+    block: &MarkdownBlock,
+    prefix: &str,
+) -> Result<(), PdfExportError> {
+    if let MarkdownBlock::Paragraph(runs) = block {
+        let mut para = Paragraph::new(prefix);
+        // Add text runs
+        for run in runs {
+            para.push_styled(&run.text, get_text_style(run));
+        }
+        pdf_doc.push(para);
+    } else {
+        pdf_doc.push(Paragraph::new(prefix));
+        add_block(pdf_doc, block)?;
     }
     Ok(())
 }
@@ -790,7 +839,9 @@ fn add_inline_table(
             .styled(Style::new().bold().with_color(Color::Rgb(0, 0, 0)));
         header_row = header_row.element(para);
     }
-    header_row.push().map_err(|e| PdfExportError::PdfError(format!("Failed to add table header row: {}", e)))?;
+    header_row
+        .push()
+        .map_err(|e| PdfExportError::PdfError(format!("Failed to add table header row: {}", e)))?;
 
     // Add data rows
     for row in rows {
@@ -812,7 +863,9 @@ fn add_inline_table(
             data_row = data_row.element(para);
         }
 
-        data_row.push().map_err(|e| PdfExportError::PdfError(format!("Failed to add table data row: {}", e)))?;
+        data_row.push().map_err(|e| {
+            PdfExportError::PdfError(format!("Failed to add table data row: {}", e))
+        })?;
     }
 
     pdf_doc.push(table);
@@ -848,7 +901,9 @@ fn add_csv_table(
                 .styled(Style::new().bold().with_color(Color::Rgb(0, 0, 0)));
             header_row = header_row.element(para);
         }
-        header_row.push().map_err(|e| PdfExportError::PdfError(format!("Failed to add CSV table header row: {}", e)))?;
+        header_row.push().map_err(|e| {
+            PdfExportError::PdfError(format!("Failed to add CSV table header row: {}", e))
+        })?;
     }
 
     // Remaining rows are data
@@ -870,7 +925,9 @@ fn add_csv_table(
             data_row = data_row.element(para);
         }
 
-        data_row.push().map_err(|e| PdfExportError::PdfError(format!("Failed to add CSV table data row: {}", e)))?;
+        data_row.push().map_err(|e| {
+            PdfExportError::PdfError(format!("Failed to add CSV table data row: {}", e))
+        })?;
     }
 
     pdf_doc.push(table);
@@ -1005,13 +1062,19 @@ fn load_and_embed_image(
     // Get the dimensions from the DynamicImage before we convert it
     let (img_width, _img_height) = match format {
         ImageFormat::Jpeg => {
-            let dynamic_image = image::load_from_memory_with_format(&image_bytes, image::ImageFormat::Jpeg)
-                .map_err(|e| PdfExportError::PdfError(format!("Failed to get JPEG dimensions: {}", e)))?;
+            let dynamic_image =
+                image::load_from_memory_with_format(&image_bytes, image::ImageFormat::Jpeg)
+                    .map_err(|e| {
+                        PdfExportError::PdfError(format!("Failed to get JPEG dimensions: {}", e))
+                    })?;
             dynamic_image.dimensions()
         }
         ImageFormat::Png => {
-            let dynamic_image = image::load_from_memory_with_format(&image_bytes, image::ImageFormat::Png)
-                .map_err(|e| PdfExportError::PdfError(format!("Failed to get PNG dimensions: {}", e)))?;
+            let dynamic_image =
+                image::load_from_memory_with_format(&image_bytes, image::ImageFormat::Png)
+                    .map_err(|e| {
+                        PdfExportError::PdfError(format!("Failed to get PNG dimensions: {}", e))
+                    })?;
             dynamic_image.dimensions()
         }
         _ => (800, 600), // Default for unsupported formats
