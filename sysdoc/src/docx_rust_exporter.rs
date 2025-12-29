@@ -342,6 +342,10 @@ pub fn to_docx(
 
     // Write the document
     log::info!("Writing DOCX to: {}", output_path.display());
+    // Create parent directories if they don't exist
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent).map_err(ExportError::IoError)?;
+    }
     docx.write_file(output_path)
         .map_err(|e| ExportError::FormatError(format!("Failed to write DOCX: {}", e)))?;
 

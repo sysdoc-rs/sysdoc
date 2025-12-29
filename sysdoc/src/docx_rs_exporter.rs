@@ -57,6 +57,10 @@ pub fn to_docx(doc: &UnifiedDocument, output_path: &Path) -> Result<(), ExportEr
 
     // Write the document
     log::info!("Writing DOCX to: {}", output_path.display());
+    // Create parent directories if they don't exist
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent).map_err(ExportError::IoError)?;
+    }
     let file = std::fs::File::create(output_path).map_err(ExportError::IoError)?;
     docx.build()
         .pack(file)

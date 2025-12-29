@@ -117,6 +117,10 @@ pub fn to_docx(
     let template_file = std::fs::File::open(template_path)?;
     let mut template_zip = ZipArchive::new(template_file)?;
 
+    // Create parent directories if they don't exist
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
     let output_file = std::fs::File::create(output_path)?;
     let mut output_zip = ZipWriter::new(output_file);
 

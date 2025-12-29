@@ -67,7 +67,10 @@ pub fn to_html(doc: &UnifiedDocument, output_path: &Path) -> Result<(), HtmlExpo
     output.push_str("</body>\n");
     output.push_str("</html>\n");
 
-    // Write to file
+    // Write to file - create parent directories if they don't exist
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     let mut file = fs::File::create(output_path)?;
     file.write_all(output.as_bytes())?;
 
