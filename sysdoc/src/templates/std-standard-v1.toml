@@ -416,7 +416,7 @@ defined in the test case sections of this document.
 <!-- The table below is auto-generated showing each STD test case and the requirements it traces to -->
 
 ```toml {sysdoc}
-generate_section_id_to_traced_ids_table = true
+generate_section_id_to_traced_ids_table = ["Test Case", "Software Requirement"]
 ```
 
 ## Requirements to Test Cases
@@ -424,7 +424,7 @@ generate_section_id_to_traced_ids_table = true
 <!-- The table below is auto-generated showing each requirement and the STD test cases that address it -->
 
 ```toml {sysdoc}
-generate_traced_ids_to_section_ids_table = true
+generate_traced_ids_to_section_ids_table = ["Software Requirement", "Test Cases"]
 ```
 """
 

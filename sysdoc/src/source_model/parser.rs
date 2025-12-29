@@ -184,14 +184,21 @@ impl MarkdownParser {
             };
 
             // Generate section_id -> traced_ids table
-            if metadata.generate_section_id_to_traced_ids_table {
-                let table = Self::create_section_to_traced_table(&section_to_traced);
+            if let Some((col1, col2)) = metadata
+                .generate_section_id_to_traced_ids_table
+                .get_headers()
+            {
+                let table = Self::create_section_to_traced_table(&section_to_traced, &col1, &col2);
                 section.content.push(table);
             }
 
             // Generate traced_id -> section_ids table
-            if metadata.generate_traced_ids_to_section_ids_table {
-                let table = Self::create_traced_to_sections_table(&traced_to_sections);
+            if let Some((col1, col2)) = metadata
+                .generate_traced_ids_to_section_ids_table
+                .get_headers()
+            {
+                let table =
+                    Self::create_traced_to_sections_table(&traced_to_sections, &col1, &col2);
                 section.content.push(table);
             }
         }
@@ -244,12 +251,14 @@ impl MarkdownParser {
     /// Create a table mapping section_ids to their traced_ids
     fn create_section_to_traced_table(
         section_to_traced: &[(String, Vec<String>)],
+        col1_header: &str,
+        col2_header: &str,
     ) -> MarkdownBlock {
         use super::text_run::TextRun;
 
         let headers = vec![
-            vec![TextRun::new("Section ID".to_string())],
-            vec![TextRun::new("Traced IDs".to_string())],
+            vec![TextRun::new(col1_header.to_string())],
+            vec![TextRun::new(col2_header.to_string())],
         ];
 
         let rows: Vec<Vec<Vec<TextRun>>> = section_to_traced
@@ -274,12 +283,14 @@ impl MarkdownParser {
     /// Create a table mapping traced_ids to section_ids that reference them
     fn create_traced_to_sections_table(
         traced_to_sections: &std::collections::BTreeMap<String, Vec<String>>,
+        col1_header: &str,
+        col2_header: &str,
     ) -> MarkdownBlock {
         use super::text_run::TextRun;
 
         let headers = vec![
-            vec![TextRun::new("Traced ID".to_string())],
-            vec![TextRun::new("Section IDs".to_string())],
+            vec![TextRun::new(col1_header.to_string())],
+            vec![TextRun::new(col2_header.to_string())],
         ];
 
         let rows: Vec<Vec<Vec<TextRun>>> = traced_to_sections
@@ -2089,7 +2100,7 @@ fn main() {}
         let markdown = r#"# Traceability
 
 ```sysdoc
-generate_section_id_to_traced_ids_table = true
+generate_section_id_to_traced_ids_table = ["Section ID", "Traced IDs"]
 ```
 
 ## Requirement 1
@@ -2151,7 +2162,7 @@ Content 2.
         let markdown = r#"# Traceability
 
 ```sysdoc
-generate_traced_ids_to_section_ids_table = true
+generate_traced_ids_to_section_ids_table = ["Traced ID", "Section IDs"]
 ```
 
 ## Requirement 1

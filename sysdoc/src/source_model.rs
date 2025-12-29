@@ -254,8 +254,10 @@ mod tests {
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
                     traced_ids: None,
-                    generate_section_id_to_traced_ids_table: false,
-                    generate_traced_ids_to_section_ids_table: false,
+                    generate_section_id_to_traced_ids_table:
+                        section_metadata::TableGeneration::Disabled,
+                    generate_traced_ids_to_section_ids_table:
+                        section_metadata::TableGeneration::Disabled,
                 }),
             }],
         };
@@ -275,8 +277,10 @@ mod tests {
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
                     traced_ids: None,
-                    generate_section_id_to_traced_ids_table: false,
-                    generate_traced_ids_to_section_ids_table: false,
+                    generate_section_id_to_traced_ids_table:
+                        section_metadata::TableGeneration::Disabled,
+                    generate_traced_ids_to_section_ids_table:
+                        section_metadata::TableGeneration::Disabled,
                 }),
             }],
         };
@@ -327,8 +331,10 @@ mod tests {
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
                     traced_ids: None,
-                    generate_section_id_to_traced_ids_table: false,
-                    generate_traced_ids_to_section_ids_table: false,
+                    generate_section_id_to_traced_ids_table:
+                        section_metadata::TableGeneration::Disabled,
+                    generate_traced_ids_to_section_ids_table:
+                        section_metadata::TableGeneration::Disabled,
                 }),
             }],
         };
@@ -347,8 +353,10 @@ mod tests {
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-002".to_string()), // Different ID
                     traced_ids: None,
-                    generate_section_id_to_traced_ids_table: false,
-                    generate_traced_ids_to_section_ids_table: false,
+                    generate_section_id_to_traced_ids_table:
+                        section_metadata::TableGeneration::Disabled,
+                    generate_traced_ids_to_section_ids_table:
+                        section_metadata::TableGeneration::Disabled,
                 }),
             }],
         };

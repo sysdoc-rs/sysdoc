@@ -436,7 +436,7 @@ defined in the CSCI component sections of this document.
 <!-- The table below is auto-generated showing each software unit and the requirements it addresses -->
 
 ```toml {sysdoc}
-generate_section_id_to_traced_ids_table = true
+generate_section_id_to_traced_ids_table = ["Software Unit", "Software Requirement"]
 ```
 
 ## Requirements to Software Units
@@ -444,7 +444,7 @@ generate_section_id_to_traced_ids_table = true
 <!-- The table below is auto-generated showing each requirement and the software units that implement it -->
 
 ```toml {sysdoc}
-generate_traced_ids_to_section_ids_table = true
+generate_traced_ids_to_section_ids_table = ["Software Requirement", "Software Units"]
 ```
 """
 

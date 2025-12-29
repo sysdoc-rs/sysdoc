@@ -398,7 +398,7 @@ defined in the component sections of this document.
 <!-- The table below is auto-generated showing each SSDD component and the system requirements it traces to -->
 
 ```toml {sysdoc}
-generate_section_id_to_traced_ids_table = true
+generate_section_id_to_traced_ids_table = ["Configuration Item", "System Requirement"]
 ```
 
 ## System Requirements to System Components
@@ -406,7 +406,7 @@ generate_section_id_to_traced_ids_table = true
 <!-- The table below is auto-generated showing each system requirement and the SSDD components that address it -->
 
 ```toml {sysdoc}
-generate_traced_ids_to_section_ids_table = true
+generate_traced_ids_to_section_ids_table = ["System Requirement", "Configuration Items"]
 ```
 
 """

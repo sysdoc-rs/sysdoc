@@ -289,8 +289,8 @@ all section_id and traced_ids defined throughout this document.
 """
 content = """
 ```toml {sysdoc}
-generate_section_id_to_traced_ids_table = true
-generate_traced_ids_to_section_ids_table = true
+generate_section_id_to_traced_ids_table = ["Software Requirement", "System Requirement"]
+generate_traced_ids_to_section_ids_table = ["System Requirement", "Software Requirements"]
 ```
 
 The tables below are automatically generated from the sysdoc metadata blocks
