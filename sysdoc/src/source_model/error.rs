@@ -24,4 +24,13 @@ pub enum SourceModelError {
         /// Number of h1 headings found
         count: usize,
     },
+
+    /// Failed to parse sysdoc metadata block
+    #[error("Failed to parse sysdoc metadata block at line {line_number}: {error}")]
+    MetadataParseError {
+        /// Line number where the metadata block appears
+        line_number: usize,
+        /// The underlying parse error
+        error: String,
+    },
 }

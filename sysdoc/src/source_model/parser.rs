@@ -60,6 +60,9 @@ pub struct MarkdownParser {
 
     /// Source file path (relative to document root)
     source_file: PathBuf,
+
+    /// Collected metadata parsing errors
+    metadata_errors: Vec<SourceModelError>,
 }
 
 /// Context for building a code block
@@ -139,6 +142,7 @@ impl MarkdownParser {
             source_content: String::new(),
             current_line_number: 1,
             source_file,
+            metadata_errors: Vec::new(),
         }
     }
 
@@ -182,6 +186,11 @@ impl MarkdownParser {
 
         // Finalize any remaining content
         parser.finalize();
+
+        // Check for metadata parsing errors
+        if let Some(error) = parser.metadata_errors.first() {
+            return Err(error.clone());
+        }
 
         // Validate heading structure
         Self::validate_heading_structure(&parser.sections)?;
@@ -756,7 +765,12 @@ impl MarkdownParser {
                 }
             }
             Err(err) => {
-                log::warn!("Failed to parse sysdoc metadata: {}", err);
+                // Store the error to be reported at the end of parsing
+                self.metadata_errors
+                    .push(SourceModelError::MetadataParseError {
+                        line_number: self.current_line_number,
+                        error: err.to_string(),
+                    });
             }
         }
     }
@@ -2493,5 +2507,47 @@ No metadata here.
             .collect();
 
         assert!(tables.is_empty(), "Should have no generated tables");
+    }
+
+    #[test]
+    fn test_invalid_metadata_syntax_fails_build() {
+        // This test verifies that using the old syntax "= true" produces a clear error
+        let markdown = r#"# Test Section
+
+```sysdoc
+section_id = "REQ-001"
+generate_section_id_to_traced_ids_table = true
+```
+
+Some content here.
+"#;
+
+        let result = MarkdownParser::parse(
+            markdown,
+            &PathBuf::from("."),
+            &test_section_number(),
+            &PathBuf::from("test.md"),
+        );
+
+        // Verify that parsing fails with a metadata error
+        assert!(
+            result.is_err(),
+            "Expected parsing to fail with metadata error"
+        );
+
+        let error = result.unwrap_err();
+        let error_msg = format!("{}", error);
+
+        // Verify the error message contains helpful information
+        assert!(
+            error_msg.contains("custom headers"),
+            "Error message should explain custom headers are required. Got: {}",
+            error_msg
+        );
+        assert!(
+            error_msg.contains("sysdoc metadata block"),
+            "Error message should mention sysdoc metadata block. Got: {}",
+            error_msg
+        );
     }
 }
