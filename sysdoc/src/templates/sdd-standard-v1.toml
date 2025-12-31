@@ -35,6 +35,7 @@ email = "approver@example.com"
 content = """
 build/
 *.docx
+!template.docx
 *.pdf
 .DS_Store
 """
