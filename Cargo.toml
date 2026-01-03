@@ -26,7 +26,6 @@ docx-rs = "0.4"
 imagesize = "0.13"
 zip = "2.2"
 base64 = "0.22"
-genpdf = { version = "0.2", features = ["images"] }
 image = { version = "0.23", default-features = false, features = ["jpeg", "png"] }
 typst = "0.13"
 typst-pdf = "0.13"

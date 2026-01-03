@@ -38,13 +38,12 @@ mod markdown_exporter;
 // HTML exporter
 mod html_exporter;
 
-// PDF exporters
-mod pdf_exporter;
+// PDF exporter (Typst-based)
 mod typst_exporter;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use cli::{Cli, Commands, DocxEngine, OutputFormat, PdfEngine};
+use cli::{Cli, Commands, DocxEngine, OutputFormat};
 
 /// Main entry point for the sysdoc CLI application
 fn main() {
@@ -77,9 +76,8 @@ fn run() -> Result<()> {
             no_toc: _,
             no_images,
             engine,
-            pdf_engine,
         } => {
-            handle_build_command(input, output, format, watch, verbose, no_images, engine, pdf_engine)?;
+            handle_build_command(input, output, format, watch, verbose, no_images, engine)?;
         }
 
         Commands::Validate {
@@ -168,7 +166,6 @@ fn handle_build_command(
     verbose: bool,
     no_images: bool,
     engine: DocxEngine,
-    pdf_engine: PdfEngine,
 ) -> Result<()> {
     // Auto-detect format from output file extension if not explicitly specified
     let format = match format_arg {
@@ -306,18 +303,8 @@ fn handle_build_command(
             println!("✓ Successfully wrote: {}", output.display());
         }
         OutputFormat::Pdf => {
-            match pdf_engine {
-                PdfEngine::Genpdf => {
-                    println!("Using genpdf engine");
-                    pipeline::export::to_pdf(&unified_doc, &output)
-                        .with_context(|| format!("Failed to export PDF to {}", output.display()))?;
-                }
-                PdfEngine::Typst => {
-                    println!("Using Typst engine (better typography, SVG support)");
-                    typst_exporter::to_pdf(&unified_doc, &output)
-                        .with_context(|| format!("Failed to export PDF via Typst to {}", output.display()))?;
-                }
-            }
+            typst_exporter::to_pdf(&unified_doc, &output)
+                .with_context(|| format!("Failed to export PDF to {}", output.display()))?;
             println!("✓ Successfully wrote: {}", output.display());
         }
     }

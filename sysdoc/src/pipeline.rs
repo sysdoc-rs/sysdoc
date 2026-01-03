@@ -374,7 +374,6 @@ pub mod export {
     use crate::docx_rust_exporter;
     use crate::html_exporter;
     use crate::markdown_exporter;
-    use crate::pdf_exporter;
     use crate::unified_document::UnifiedDocument;
     use std::path::Path;
 
@@ -417,20 +416,6 @@ pub mod export {
     /// * `Err(ExportError)` - Error during export
     pub fn to_html(doc: &UnifiedDocument, output_path: &Path) -> Result<(), ExportError> {
         html_exporter::to_html(doc, output_path)
-            .map_err(|e| ExportError::IoError(std::io::Error::other(e.to_string())))
-    }
-
-    /// Export to PDF file with title page, headers, page numbers, and table of contents
-    ///
-    /// # Parameters
-    /// * `doc` - The unified document to export
-    /// * `output_path` - Path where the PDF file will be written
-    ///
-    /// # Returns
-    /// * `Ok(())` - Successfully exported to PDF
-    /// * `Err(ExportError)` - Error during export
-    pub fn to_pdf(doc: &UnifiedDocument, output_path: &Path) -> Result<(), ExportError> {
-        pdf_exporter::to_pdf(doc, output_path)
             .map_err(|e| ExportError::IoError(std::io::Error::other(e.to_string())))
     }
 }

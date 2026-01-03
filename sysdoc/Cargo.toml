@@ -27,7 +27,6 @@ docx-rs = { workspace = true }
 imagesize = { workspace = true }
 zip = { workspace = true }
 base64 = { workspace = true }
-genpdf = { workspace = true }
 image = { workspace = true }
 typst = { workspace = true }
 typst-pdf = { workspace = true }
