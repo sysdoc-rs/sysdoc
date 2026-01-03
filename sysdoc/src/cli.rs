@@ -28,6 +28,16 @@ pub enum DocxEngine {
     Template,
 }
 
+/// PDF export engine selection
+#[derive(Debug, Clone, Copy, Default, ValueEnum)]
+pub enum PdfEngine {
+    /// Use genpdf library (default, lightweight)
+    #[default]
+    Genpdf,
+    /// Use Typst typesetting system (better typography, SVG support)
+    Typst,
+}
+
 /// CLI structure for the sysdoc application
 #[derive(Parser)]
 #[command(name = "sysdoc")]
@@ -92,6 +102,10 @@ pub enum Commands {
         /// DOCX export engine (template preserves styles, docx-rust/docx-rs are alternatives)
         #[arg(long, value_enum, default_value = "template")]
         engine: DocxEngine,
+
+        /// PDF export engine (genpdf is lightweight, typst has better typography and SVG support)
+        #[arg(long, value_enum, default_value = "genpdf")]
+        pdf_engine: PdfEngine,
     },
 
     /// Validate document structure and references

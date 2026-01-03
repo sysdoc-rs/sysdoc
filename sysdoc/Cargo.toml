@@ -29,6 +29,10 @@ zip = { workspace = true }
 base64 = { workspace = true }
 genpdf = { workspace = true }
 image = { workspace = true }
+typst = { workspace = true }
+typst-pdf = { workspace = true }
+typst-kit = { workspace = true }
+comemo = { workspace = true }
 
 [dev-dependencies]
 pulldown-cmark = { workspace = true, features = ["default"] }
