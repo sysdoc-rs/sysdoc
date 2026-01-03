@@ -500,6 +500,26 @@ fn append_block(
             let para = create_code_block_paragraph(code);
             docx.document.push(para);
         }
+        MarkdownBlock::IncludedCodeBlock {
+            path,
+            content,
+            exists,
+            ..
+        } => {
+            // Render included code blocks with monospace font
+            if !*exists {
+                let para = Paragraph::default()
+                    .push_text(format!("[Missing include file: {}]", path.display()));
+                docx.document.push(para);
+            } else if let Some(code) = content {
+                let para = create_code_block_paragraph(code);
+                docx.document.push(para);
+            } else {
+                let para = Paragraph::default()
+                    .push_text(format!("[Failed to read include file: {}]", path.display()));
+                docx.document.push(para);
+            }
+        }
         MarkdownBlock::BlockQuote(blocks) => {
             // Render block quotes with indentation
             for inner_block in blocks {
@@ -535,6 +555,7 @@ fn block_type_name(block: &MarkdownBlock) -> &'static str {
         MarkdownBlock::CsvTable { .. } => "CsvTable",
         MarkdownBlock::Rule => "Rule",
         MarkdownBlock::Html(_) => "Html",
+        MarkdownBlock::IncludedCodeBlock { .. } => "IncludedCodeBlock",
     }
 }
 

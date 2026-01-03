@@ -209,6 +209,7 @@ fn block_type_name(block: &MarkdownBlock) -> &'static str {
         MarkdownBlock::CsvTable { .. } => "CsvTable",
         MarkdownBlock::Rule => "Rule",
         MarkdownBlock::Html(_) => "Html",
+        MarkdownBlock::IncludedCodeBlock { .. } => "IncludedCodeBlock",
     }
 }
 

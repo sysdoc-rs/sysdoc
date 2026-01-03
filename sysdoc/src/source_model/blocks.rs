@@ -97,6 +97,23 @@ pub enum MarkdownBlock {
     ///
     /// Raw HTML that should be passed through without modification
     Html(String),
+
+    /// An included external file rendered as a code block
+    ///
+    /// Created from the `include_file` metadata field. The file content is
+    /// read and stored, with the language inferred from the file extension.
+    IncludedCodeBlock {
+        /// Path to the file (relative to document root, as written in metadata)
+        path: PathBuf,
+        /// Absolute path to the file
+        absolute_path: PathBuf,
+        /// Programming language for syntax highlighting (inferred from extension)
+        language: Option<String>,
+        /// The file content (if loaded successfully)
+        content: Option<String>,
+        /// Whether the file exists on disk
+        exists: bool,
+    },
 }
 
 /// A list item, which may contain multiple blocks

@@ -18,6 +18,12 @@ pub enum ValidationError {
         referenced_in: PathBuf,
         table_path: PathBuf,
     },
+    /// A referenced include file is missing
+    #[error("Missing include file '{include_path}' referenced in '{referenced_in}'", include_path = include_path.display(), referenced_in = referenced_in.display())]
+    MissingIncludeFile {
+        referenced_in: PathBuf,
+        include_path: PathBuf,
+    },
     /// Duplicate section_id found in metadata
     #[error("Duplicate section_id '{section_id}':\n  First occurrence:  {first_location}:{first_line}\n  Second occurrence: {second_location}:{second_line}", first_location = first_location.display(), second_location = second_location.display())]
     DuplicateSectionId {

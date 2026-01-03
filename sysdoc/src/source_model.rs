@@ -64,16 +64,18 @@ impl SourceModel {
     /// Validate that all referenced resources exist
     ///
     /// # Returns
-    /// * `Ok(())` - All referenced images and tables exist, and all section_ids are unique
+    /// * `Ok(())` - All referenced images, tables, and include files exist, and all section_ids are unique
     /// * `Err(ValidationError)` - One or more referenced resources are missing or duplicate section_ids found
     pub fn validate(&self) -> Result<(), ValidationError> {
         let image_errors = self.validate_image_references();
         let table_errors = self.validate_table_references();
+        let include_errors = self.validate_include_references();
         let section_id_errors = self.validate_unique_section_ids();
 
         let errors: Vec<ValidationError> = image_errors
             .into_iter()
             .chain(table_errors)
+            .chain(include_errors)
             .chain(section_id_errors)
             .collect();
 
@@ -306,6 +308,40 @@ impl SourceModel {
             .collect()
     }
 
+    /// Validate all include file references
+    fn validate_include_references(&self) -> Vec<ValidationError> {
+        self.markdown_files
+            .iter()
+            .flat_map(|md_file| {
+                md_file
+                    .sections
+                    .iter()
+                    .flat_map(|section| self.validate_section_includes(md_file, section))
+            })
+            .collect()
+    }
+
+    /// Validate include file references in a single section
+    fn validate_section_includes(
+        &self,
+        md_file: &MarkdownSource,
+        section: &MarkdownSection,
+    ) -> Vec<ValidationError> {
+        section
+            .content
+            .iter()
+            .filter_map(|block| match block {
+                MarkdownBlock::IncludedCodeBlock { path, exists, .. } if !exists => {
+                    Some(ValidationError::MissingIncludeFile {
+                        referenced_in: md_file.path.clone(),
+                        include_path: path.clone(),
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Validate that all section_ids are unique across all sections
     fn validate_unique_section_ids(&self) -> Vec<ValidationError> {
         use std::collections::HashMap;
@@ -414,11 +450,7 @@ mod tests {
                 content: Vec::new(),
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
-                    traced_ids: None,
-                    generate_section_id_to_traced_ids_table:
-                        section_metadata::TableGeneration::Disabled,
-                    generate_traced_ids_to_section_ids_table:
-                        section_metadata::TableGeneration::Disabled,
+                    ..Default::default()
                 }),
             }],
         };
@@ -439,11 +471,7 @@ mod tests {
                 content: Vec::new(),
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
-                    traced_ids: None,
-                    generate_section_id_to_traced_ids_table:
-                        section_metadata::TableGeneration::Disabled,
-                    generate_traced_ids_to_section_ids_table:
-                        section_metadata::TableGeneration::Disabled,
+                    ..Default::default()
                 }),
             }],
         };
@@ -499,11 +527,7 @@ mod tests {
                 content: Vec::new(),
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
-                    traced_ids: None,
-                    generate_section_id_to_traced_ids_table:
-                        section_metadata::TableGeneration::Disabled,
-                    generate_traced_ids_to_section_ids_table:
-                        section_metadata::TableGeneration::Disabled,
+                    ..Default::default()
                 }),
             }],
         };
@@ -523,11 +547,7 @@ mod tests {
                 content: Vec::new(),
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-002".to_string()), // Different ID
-                    traced_ids: None,
-                    generate_section_id_to_traced_ids_table:
-                        section_metadata::TableGeneration::Disabled,
-                    generate_traced_ids_to_section_ids_table:
-                        section_metadata::TableGeneration::Disabled,
+                    ..Default::default()
                 }),
             }],
         };
@@ -560,11 +580,7 @@ mod tests {
                 content: Vec::new(),
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
-                    traced_ids: None,
-                    generate_section_id_to_traced_ids_table:
-                        section_metadata::TableGeneration::Disabled,
-                    generate_traced_ids_to_section_ids_table:
-                        section_metadata::TableGeneration::Disabled,
+                    ..Default::default()
                 }),
             }],
         };
@@ -585,11 +601,7 @@ mod tests {
                 content: Vec::new(),
                 metadata: Some(SectionMetadata {
                     section_id: Some("REQ-001".to_string()),
-                    traced_ids: None,
-                    generate_section_id_to_traced_ids_table:
-                        section_metadata::TableGeneration::Disabled,
-                    generate_traced_ids_to_section_ids_table:
-                        section_metadata::TableGeneration::Disabled,
+                    ..Default::default()
                 }),
             }],
         };

@@ -274,6 +274,36 @@ fn write_block(
             output.push_str(html);
             output.push('\n');
         }
+
+        MarkdownBlock::IncludedCodeBlock {
+            path,
+            language,
+            content,
+            exists,
+            ..
+        } => {
+            if !*exists {
+                output.push_str(&format!(
+                    "<p class=\"image-error\">Include file not found: {}</p>\n",
+                    escape_html(&path.display().to_string())
+                ));
+            } else if let Some(code) = content {
+                if let Some(lang) = language {
+                    output.push_str(&format!(
+                        "<pre><code class=\"language-{}\">{}</code></pre>\n",
+                        escape_html(lang),
+                        escape_html(code)
+                    ));
+                } else {
+                    output.push_str(&format!("<pre><code>{}</code></pre>\n", escape_html(code)));
+                }
+            } else {
+                output.push_str(&format!(
+                    "<p class=\"image-error\">Failed to read include file: {}</p>\n",
+                    escape_html(&path.display().to_string())
+                ));
+            }
+        }
     }
 
     Ok(())

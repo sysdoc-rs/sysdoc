@@ -1035,14 +1035,53 @@ impl MarkdownParser {
             })
         };
 
+        // Build content, potentially adding an included code block at the end
+        let mut content = section.blocks;
+
+        // If metadata specifies include_file, load it and append as a code block
+        if let Some(ref metadata) = section.metadata {
+            if let Some(ref include_path) = metadata.include_file {
+                let included_block = self.create_included_code_block(include_path);
+                content.push(included_block);
+            }
+        }
+
         MarkdownSection {
             heading_level: section.level,
             heading_text: section.heading_text,
             section_number,
             line_number: section.line_number,
             source_file: self.source_file.clone(),
-            content: section.blocks,
+            content,
             metadata: section.metadata,
+        }
+    }
+
+    /// Create an IncludedCodeBlock from a file path specified in metadata
+    fn create_included_code_block(&self, include_path: &str) -> MarkdownBlock {
+        let path = PathBuf::from(include_path);
+        let absolute_path = self.document_root.join(&path);
+        let exists = absolute_path.exists();
+
+        // Infer language from file extension
+        let language = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_lowercase());
+
+        // Load file content if it exists
+        let content = if exists {
+            std::fs::read_to_string(&absolute_path).ok()
+        } else {
+            None
+        };
+
+        MarkdownBlock::IncludedCodeBlock {
+            path,
+            absolute_path,
+            language,
+            content,
+            exists,
         }
     }
 }

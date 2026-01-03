@@ -98,6 +98,7 @@ impl<'de> Deserialize<'de> for TableGeneration {
 /// ```sysdoc
 /// section_id = "REQ-001"
 /// traced_ids = ["SRS-001", "SRS-002"]
+/// include_file = "schemas/interface.xml"
 /// ```
 /// ```
 ///
@@ -133,6 +134,15 @@ pub struct SectionMetadata {
     /// - First column: traced_id (deduplicated, sorted lexically)
     /// - Second column: comma-separated list of section_ids (sorted lexically)
     pub generate_traced_ids_to_section_ids_table: TableGeneration,
+
+    /// Path to an external file to include as a code block at the end of the section
+    ///
+    /// The file content is read and appended as an unformatted code block after
+    /// all other content in the section. The language for syntax highlighting
+    /// is inferred from the file extension (e.g., ".xml" -> "xml", ".json" -> "json").
+    ///
+    /// Example: `include_file = "schemas/interface.xml"`
+    pub include_file: Option<String>,
 }
 
 impl SectionMetadata {

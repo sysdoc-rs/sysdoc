@@ -188,6 +188,37 @@ fn write_block(
             output.push_str(html);
             output.push_str("\n\n");
         }
+
+        MarkdownBlock::IncludedCodeBlock {
+            path,
+            language,
+            content,
+            exists,
+            ..
+        } => {
+            if !*exists {
+                output.push_str(&format!(
+                    "{}<!-- Include file not found: {} -->\n\n",
+                    indent,
+                    path.display()
+                ));
+            } else if let Some(code) = content {
+                let lang = language.as_deref().unwrap_or("");
+                output.push_str(&format!("{}```{}\n", indent, lang));
+                for line in code.lines() {
+                    output.push_str(&indent);
+                    output.push_str(line);
+                    output.push('\n');
+                }
+                output.push_str(&format!("{}```\n\n", indent));
+            } else {
+                output.push_str(&format!(
+                    "{}<!-- Failed to read include file: {} -->\n\n",
+                    indent,
+                    path.display()
+                ));
+            }
+        }
     }
 
     Ok(())
