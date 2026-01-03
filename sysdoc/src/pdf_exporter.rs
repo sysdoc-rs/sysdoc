@@ -725,6 +725,33 @@ fn add_block(pdf_doc: &mut genpdf::Document, block: &MarkdownBlock) -> Result<()
         MarkdownBlock::Html(_) => {
             // Skip HTML blocks in PDF
         }
+
+        MarkdownBlock::IncludedCodeBlock {
+            path,
+            absolute_path: _,
+            language: _,
+            content,
+            exists,
+        } => {
+            if !exists {
+                pdf_doc.push(
+                    Paragraph::new(format!("[Included file not found: {}]", path.display()))
+                        .styled(Style::new().italic()),
+                );
+            } else if let Some(code) = content {
+                // Render as code block with smaller font
+                pdf_doc.push(Paragraph::new(code.as_str()).styled(Style::new().with_font_size(9)));
+            } else {
+                pdf_doc.push(
+                    Paragraph::new(format!(
+                        "[Included file could not be read: {}]",
+                        path.display()
+                    ))
+                    .styled(Style::new().italic()),
+                );
+            }
+            pdf_doc.push(Break::new(0.5));
+        }
     }
 
     Ok(())
