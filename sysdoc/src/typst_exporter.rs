@@ -326,16 +326,16 @@ fn generate_typst_markup(doc: &UnifiedDocument) -> String {
 #set text(font: "Liberation Sans", size: 11pt)
 #set heading(numbering: none)
 
-// Code block styling: monospace font with off-white background
+// Code styling: monospace font for all code
 #show raw: set text(font: "Liberation Mono", size: 9pt)
-#show raw: set par(leading: 0.5em)  // Tighter line spacing for code
-#show raw.where(block: true): block.with(
+// Code block styling: off-white background with tighter line spacing
+#show raw.where(block: true): it => block(
   fill: luma(245),
   inset: 8pt,
   radius: 4pt,
   width: 100%,
-  breakable: false,  // Keep code blocks together on one page
-)
+  breakable: false,
+)[#set par(leading: 0.5em); #it]
 
 // Keep headings with following content (avoid orphaned headings at page bottom)
 #show heading: it => block(above: 1.4em, below: 0.6em, sticky: true)[#it]
