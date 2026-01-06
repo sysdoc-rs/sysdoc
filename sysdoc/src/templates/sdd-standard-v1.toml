@@ -17,6 +17,7 @@ document_type = "SDD"
 document_standard = "DI-IPSC-81435B"
 document_template = "sdd-standard-v1"
 docx_template_path = "template.docx"
+# protection_mark = "UNCLASSIFIED//"
 
 [document_owner]
 name = "Your Name"

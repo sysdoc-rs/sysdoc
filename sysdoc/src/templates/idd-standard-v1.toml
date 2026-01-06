@@ -17,6 +17,7 @@ document_type = "IDD"
 document_standard = "DI-IPSC-81436A"
 document_template = "idd-standard-v1"
 docx_template_path = "template.docx"
+# protection_mark = "UNCLASSIFIED//"
 
 [document_owner]
 name = "Your Name"

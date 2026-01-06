@@ -17,6 +17,7 @@ document_type = "SRS"
 document_standard = "DI-IPSC-81433A"
 document_template = "srs-standard-v1"
 docx_template_path = "template.docx"
+# protection_mark = "UNCLASSIFIED//"
 
 [document_owner]
 name = "Your Name"

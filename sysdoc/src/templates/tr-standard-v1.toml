@@ -17,6 +17,7 @@ document_type = "TR"
 document_standard = "DI-MISC-80508B"
 document_template = "tr-standard-v1"
 docx_template_path = "template.docx"
+# protection_mark = "UNCLASSIFIED//"
 
 [document_owner]
 name = "Your Name"
