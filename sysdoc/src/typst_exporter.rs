@@ -331,7 +331,7 @@ fn generate_preamble(doc: &UnifiedDocument) -> String {
 #let doc-version = "{}"
 
 #let make-header() = {{
-  align(center)[#text(size: 12pt, fill: red)[#protection-mark]]
+  align(center)[#text(size: 12pt, fill: red, weight: "bold")[#protection-mark]]
   if counter(page).get().first() > 1 {{
     v(-1em)
     text(size: 10pt)[#doc-id]
@@ -342,7 +342,7 @@ fn generate_preamble(doc: &UnifiedDocument) -> String {
 
 #let make-footer() = {{
   h(1fr)
-  text(size: 12pt, fill: red)[#protection-mark]
+  text(size: 12pt, fill: red, weight: "bold")[#protection-mark]
   h(1fr)
   text(size: 10pt)[Page #counter(page).display() of #counter(page).final().first()]
 }}

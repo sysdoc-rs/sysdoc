@@ -630,7 +630,7 @@ body {
     text-align: center;
     color: #cc0000;
     font-size: 1.2em;
-    font-weight: 600;
+    font-weight: 700;
     padding: 12px 0;
     margin-bottom: 16px;
 }

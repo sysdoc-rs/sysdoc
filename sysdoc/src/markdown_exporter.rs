@@ -38,6 +38,14 @@ pub enum MarkdownExportError {
 pub fn to_markdown(doc: &UnifiedDocument, output_path: &Path) -> Result<(), MarkdownExportError> {
     let mut output = String::new();
 
+    // Write protection mark at top if present (using HTML for styling)
+    if let Some(ref mark) = doc.metadata.protection_mark {
+        output.push_str(&format!(
+            "<div style=\"text-align: center; color: #cc0000; font-size: 1.2em; font-weight: bold; padding: 12px 0;\">{}</div>\n\n",
+            escape_html(mark)
+        ));
+    }
+
     // Write document title as H1 if available
     if !doc.metadata.title.is_empty() {
         output.push_str(&format!("# {}\n\n", doc.metadata.title));
@@ -48,6 +56,14 @@ pub fn to_markdown(doc: &UnifiedDocument, output_path: &Path) -> Result<(), Mark
         write_section(&mut output, section)?;
     }
 
+    // Write protection mark at bottom if present (using HTML for styling)
+    if let Some(ref mark) = doc.metadata.protection_mark {
+        output.push_str(&format!(
+            "\n<div style=\"text-align: center; color: #cc0000; font-size: 1.2em; font-weight: bold; padding: 12px 0; margin-top: 32px;\">{}</div>\n",
+            escape_html(mark)
+        ));
+    }
+
     // Write to file - create parent directories if they don't exist
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
@@ -56,6 +72,15 @@ pub fn to_markdown(doc: &UnifiedDocument, output_path: &Path) -> Result<(), Mark
     file.write_all(output.as_bytes())?;
 
     Ok(())
+}
+
+/// Escape HTML special characters for use in HTML elements within markdown
+fn escape_html(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
 /// Write a single section to the output

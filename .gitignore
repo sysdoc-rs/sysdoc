@@ -29,6 +29,7 @@ desktop.ini
 # Generated output files
 *.docx
 *.pdf
+*.html
 **/output.docx
 examples/**/output/
 nul
@@ -36,4 +37,3 @@ target/test-output/
 
 !sysdoc/src/templates/template.docx
 !tests/fixtures/template.docx
-*.pdf
