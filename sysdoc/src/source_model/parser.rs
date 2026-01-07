@@ -874,11 +874,21 @@ impl MarkdownParser {
     /// Load CSV data from a file
     fn load_csv_data(path: &std::path::Path) -> Option<Vec<Vec<String>>> {
         let mut reader = csv::Reader::from_path(path).ok()?;
-        let rows: Vec<Vec<String>> = reader
+        let mut rows: Vec<Vec<String>> = Vec::new();
+
+        // Read the headers as the first row
+        let headers = reader.headers().ok()?;
+        let header_row: Vec<String> = headers.iter().map(String::from).collect();
+        rows.push(header_row);
+
+        // Read the data rows
+        let data_rows: Vec<Vec<String>> = reader
             .records()
             .flatten()
             .map(|record| record.iter().map(String::from).collect())
             .collect();
+        rows.extend(data_rows);
+
         Some(rows)
     }
 

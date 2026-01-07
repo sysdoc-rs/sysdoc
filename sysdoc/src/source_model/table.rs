@@ -28,6 +28,12 @@ impl TableSource {
         let mut reader = csv::Reader::from_path(&self.absolute_path)?;
         let mut data = Vec::new();
 
+        // Read the headers as the first row
+        let headers = reader.headers()?;
+        let header_row: Vec<String> = headers.iter().map(|s| s.to_string()).collect();
+        data.push(header_row);
+
+        // Read the data rows
         for result in reader.records() {
             let record = result?;
             let row: Vec<String> = record.iter().map(|s| s.to_string()).collect();
