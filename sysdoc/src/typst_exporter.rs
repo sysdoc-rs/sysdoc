@@ -309,8 +309,8 @@ pub fn to_pdf(doc: &UnifiedDocument, output_path: &Path) -> Result<(), TypstExpo
 ///
 /// If protection_mark is set, it appears centered in red on all pages.
 fn generate_preamble(doc: &UnifiedDocument) -> String {
-    let document_id = escape_typst(&doc.metadata.document_id);
-    let version = doc.metadata.version.as_deref().unwrap_or("Draft");
+    let document_id = escape_typst_string(&doc.metadata.document_id);
+    let version = escape_typst_string(doc.metadata.version.as_deref().unwrap_or("Draft"));
 
     let mut preamble = String::new();
 
@@ -322,7 +322,7 @@ fn generate_preamble(doc: &UnifiedDocument) -> String {
     ));
 
     if let Some(ref mark) = doc.metadata.protection_mark {
-        let escaped_mark = escape_typst(mark);
+        let escaped_mark = escape_typst_string(mark);
 
         // Define protection mark variable and custom header/footer functions
         preamble.push_str(&format!(
@@ -785,6 +785,11 @@ fn escape_typst(s: &str) -> String {
         .replace('"', "\\\"")
 }
 
+/// Escape string for use inside Typst string literals (only quotes and backslashes)
+fn escape_typst_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -794,6 +799,22 @@ mod tests {
         assert_eq!(escape_typst("hello"), "hello");
         assert_eq!(escape_typst("hello*world"), "hello\\*world");
         assert_eq!(escape_typst("#test"), "\\#test");
+    }
+
+    #[test]
+    fn test_escape_typst_string() {
+        assert_eq!(escape_typst_string("hello"), "hello");
+        assert_eq!(escape_typst_string("DI-IPSC-81435B"), "DI-IPSC-81435B");
+        assert_eq!(
+            escape_typst_string("test_with_underscores"),
+            "test_with_underscores"
+        );
+        assert_eq!(escape_typst_string("quote\"test"), "quote\\\"test");
+        assert_eq!(escape_typst_string("back\\slash"), "back\\\\slash");
+        assert_eq!(
+            escape_typst_string("special*chars#are@not[escaped]"),
+            "special*chars#are@not[escaped]"
+        );
     }
 
     #[test]
