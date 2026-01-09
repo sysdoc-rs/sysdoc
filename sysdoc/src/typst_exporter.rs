@@ -341,10 +341,13 @@ fn generate_preamble(doc: &UnifiedDocument) -> String {
 }}
 
 #let make-footer() = {{
-  h(1fr)
-  text(size: 12pt, fill: red, weight: "bold")[#protection-mark]
-  h(1fr)
-  text(size: 10pt)[Page #counter(page).display() of #counter(page).final().first()]
+  grid(
+    columns: (1fr, auto, 1fr),
+    align: (left, center, right),
+    [],
+    text(size: 12pt, fill: red, weight: "bold")[#protection-mark],
+    text(size: 10pt)[Page #counter(page).display() of #counter(page).final().first()]
+  )
 }}
 
 #set page(paper: "a4", margin: 2cm, header: context {{ make-header() }}, footer: context {{ make-footer() }})
