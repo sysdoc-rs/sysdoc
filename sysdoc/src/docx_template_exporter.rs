@@ -134,7 +134,8 @@ pub fn to_docx(
     // Copy all files from template, modifying document.xml and relationships
     for i in 0..template_zip.len() {
         let mut file = template_zip.by_index(i)?;
-        let name = file.name().to_string();
+        // Normalize path separators to forward slashes (ZIP spec requires forward slashes)
+        let name = file.name().replace('\\', "/");
 
         // Skip directories
         if name.ends_with('/') {
@@ -217,7 +218,10 @@ pub fn to_docx(
         }
     }
 
-    output_zip.finish()?;
+    let mut file = output_zip.finish()?;
+    // Explicitly flush and sync to disk to ensure complete write (especially important on Windows)
+    file.flush()?;
+    file.sync_all()?;
 
     log::info!(
         "Successfully wrote DOCX with {} sections",
