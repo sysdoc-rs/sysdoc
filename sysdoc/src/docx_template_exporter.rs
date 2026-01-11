@@ -134,7 +134,8 @@ pub fn to_docx(
     // Copy all files from template, modifying document.xml and relationships
     for i in 0..template_zip.len() {
         let mut file = template_zip.by_index(i)?;
-        let name = file.name().to_string();
+        // Normalize path separators to forward slashes (ZIP spec requires forward slashes)
+        let name = file.name().replace('\\', "/");
 
         // Skip directories
         if name.ends_with('/') {
@@ -217,7 +218,10 @@ pub fn to_docx(
         }
     }
 
-    output_zip.finish()?;
+    let mut file = output_zip.finish()?;
+    // Explicitly flush and sync to disk to ensure complete write (especially important on Windows)
+    file.flush()?;
+    file.sync_all()?;
 
     log::info!(
         "Successfully wrote DOCX with {} sections",
@@ -383,6 +387,17 @@ fn generate_block_xml(block: &MarkdownBlock, images: &HashMap<PathBuf, ImageData
         MarkdownBlock::Rule => {
             r#"<w:p><w:r><w:t>────────────────────────────────────────────────────</w:t></w:r></w:p>"#.to_string()
         }
+        MarkdownBlock::Html(_) => {
+            // HTML blocks (typically comments) are ignored in DOCX output
+            String::new()
+        }
+        MarkdownBlock::IncludedCodeBlock { content: Some(content), .. } => {
+            generate_code_block_xml(content)
+        }
+        MarkdownBlock::IncludedCodeBlock { path, .. } => generate_paragraph_xml(&[TextRun::new(format!(
+            "[File not found: {}]",
+            path.display()
+        ))]),
         _ => generate_paragraph_xml(&[TextRun::new(format!(
             "[{:?} not implemented]",
             block_type_name(block)
