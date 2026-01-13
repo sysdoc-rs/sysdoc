@@ -84,7 +84,13 @@ impl DocumentConfig {
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), DocumentConfigError> {
         let content = toml::to_string_pretty(self).map_err(DocumentConfigError::SerializeError)?;
 
-        fs::write(&path, content).map_err(DocumentConfigError::IoError)?;
+        // Create parent directories if they don't exist
+        let path_ref = path.as_ref();
+        if let Some(parent) = path_ref.parent() {
+            fs::create_dir_all(parent).map_err(DocumentConfigError::IoError)?;
+        }
+
+        fs::write(path_ref, content).map_err(DocumentConfigError::IoError)?;
 
         Ok(())
     }

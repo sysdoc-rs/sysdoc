@@ -432,6 +432,12 @@ fn create_binary_files(
     for (file_name, content) in &template_info.binary_files {
         let full_path = target_path.join(file_name);
 
+        // Create parent directories if needed
+        if let Some(parent) = full_path.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory {}", parent.display()))?;
+        }
+
         std::fs::write(&full_path, content)
             .with_context(|| format!("Failed to write binary file {}", full_path.display()))?;
 

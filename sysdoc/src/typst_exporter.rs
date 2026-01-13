@@ -299,7 +299,12 @@ pub fn to_pdf(doc: &UnifiedDocument, output_path: &Path) -> Result<(), TypstExpo
     let pdf_bytes = typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default())
         .map_err(|e| TypstExportError::CompilationError(format!("PDF export failed: {:?}", e)))?;
 
-    // Step 5: Write to file
+    // Step 5: Create parent directories if they don't exist
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    // Step 6: Write to file
     std::fs::write(output_path, pdf_bytes)?;
 
     Ok(())
