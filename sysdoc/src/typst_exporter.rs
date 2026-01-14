@@ -441,8 +441,11 @@ fn generate_typst_markup(doc: &UnifiedDocument) -> String {
     // Title page
     output.push_str(&generate_title_page(doc));
 
-    // Revision history (if any tags exist)
-    output.push_str(&generate_revision_history(doc));
+    // Revision history on second page (if any tags exist)
+    if !doc.metadata.revision_history.is_empty() {
+        output.push_str("#pagebreak()\n\n");
+        output.push_str(&generate_revision_history(doc));
+    }
 
     // Page break before TOC
     output.push_str("#pagebreak()\n\n");
@@ -470,7 +473,6 @@ fn generate_revision_history(doc: &UnifiedDocument) -> String {
     }
 
     let mut output = String::new();
-    output.push_str("#v(2em)\n\n");
     output.push_str("== Revision History\n\n");
     output.push_str("#table(\n");
     output.push_str("  columns: (auto, auto, 1fr),\n");
