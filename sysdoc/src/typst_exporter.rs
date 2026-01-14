@@ -149,16 +149,7 @@ impl SysdocWorld {
                 doc.root.join(bg_path)
             };
 
-            if absolute_path.exists() {
-                if let Ok(data) = std::fs::read(&absolute_path) {
-                    // Use forward slashes for VirtualPath to match Typst markup
-                    let normalized_path = absolute_path.display().to_string().replace('\\', "/");
-                    let file_id =
-                        FileId::new(None, typst::syntax::VirtualPath::new(&normalized_path));
-                    files.insert(file_id, Bytes::new(data));
-                    path_to_id.insert(absolute_path, file_id);
-                }
-            }
+            Self::load_image_file(&absolute_path, &mut files, &mut path_to_id);
         }
 
         // Collect all image paths from the document
@@ -167,6 +158,25 @@ impl SysdocWorld {
         }
 
         Ok((files, path_to_id))
+    }
+
+    /// Load a single image file into the cache
+    fn load_image_file(
+        absolute_path: &Path,
+        files: &mut HashMap<FileId, Bytes>,
+        path_to_id: &mut HashMap<PathBuf, FileId>,
+    ) {
+        if !absolute_path.exists() {
+            return;
+        }
+        let Ok(data) = std::fs::read(absolute_path) else {
+            return;
+        };
+        // Use forward slashes for VirtualPath to match Typst markup
+        let normalized_path = absolute_path.display().to_string().replace('\\', "/");
+        let file_id = FileId::new(None, typst::syntax::VirtualPath::new(&normalized_path));
+        files.insert(file_id, Bytes::new(data));
+        path_to_id.insert(absolute_path.to_path_buf(), file_id);
     }
 
     /// Recursively collect image files from blocks
@@ -193,14 +203,7 @@ impl SysdocWorld {
                 exists: true,
                 ..
             } => {
-                if let Ok(data) = std::fs::read(absolute_path) {
-                    // Use forward slashes for VirtualPath to match Typst markup
-                    let normalized_path = absolute_path.display().to_string().replace('\\', "/");
-                    let file_id =
-                        FileId::new(None, typst::syntax::VirtualPath::new(&normalized_path));
-                    files.insert(file_id, Bytes::new(data));
-                    path_to_id.insert(absolute_path.clone(), file_id);
-                }
+                Self::load_image_file(absolute_path, files, path_to_id);
             }
             MarkdownBlock::BlockQuote(inner) => {
                 Self::collect_image_files(inner, files, path_to_id)?;
