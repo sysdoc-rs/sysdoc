@@ -5,7 +5,7 @@
 //! - Images embedded as data URLs (base64 encoded)
 
 use crate::source_model::{Alignment, ListItem, MarkdownBlock, MarkdownSection, TextRun};
-use crate::unified_document::UnifiedDocument;
+use crate::unified_document::{format_display_date, UnifiedDocument};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use std::fs;
 use std::io::Write;
@@ -51,6 +51,12 @@ pub fn to_markdown(doc: &UnifiedDocument, output_path: &Path) -> Result<(), Mark
         output.push_str(&format!("# {}\n\n", doc.metadata.title));
     }
 
+    // Write metadata table
+    write_metadata(&mut output, doc);
+
+    // Write revision history table
+    write_revision_history(&mut output, doc);
+
     // Write each section
     for section in &doc.sections {
         write_section(&mut output, section)?;
@@ -81,6 +87,59 @@ fn escape_html(text: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&#39;")
+}
+
+/// Write document metadata as a markdown table
+fn write_metadata(output: &mut String, doc: &UnifiedDocument) {
+    output.push_str("## Document Information\n\n");
+    output.push_str("| Field | Value |\n");
+    output.push_str("| --- | --- |\n");
+
+    output.push_str(&format!("| Document ID | {} |\n", doc.metadata.document_id));
+    output.push_str(&format!("| Type | {} |\n", doc.metadata.doc_type));
+    output.push_str(&format!("| Standard | {} |\n", doc.metadata.standard));
+
+    if let Some(ref version) = doc.metadata.version {
+        output.push_str(&format!("| Version | {} |\n", version));
+    }
+
+    if let Some(ref modified) = doc.metadata.modified {
+        output.push_str(&format!("| Last Modified | {} |\n", format_display_date(modified)));
+    }
+
+    output.push_str(&format!(
+        "| Owner | {} ({}) |\n",
+        doc.metadata.owner.name, doc.metadata.owner.email
+    ));
+    output.push_str(&format!(
+        "| Approver | {} ({}) |\n",
+        doc.metadata.approver.name, doc.metadata.approver.email
+    ));
+
+    output.push('\n');
+}
+
+/// Write revision history as a markdown table
+fn write_revision_history(output: &mut String, doc: &UnifiedDocument) {
+    if doc.metadata.revision_history.is_empty() {
+        return;
+    }
+
+    output.push_str("## Revision History\n\n");
+    output.push_str("| Version | Date | Description |\n");
+    output.push_str("| --- | --- | --- |\n");
+
+    // Display newest first (reverse order)
+    for entry in doc.metadata.revision_history.iter().rev() {
+        output.push_str(&format!(
+            "| {} | {} | {} |\n",
+            entry.version,
+            format_display_date(&entry.date),
+            entry.description
+        ));
+    }
+
+    output.push('\n');
 }
 
 /// Write a single section to the output

@@ -207,40 +207,59 @@ fn get_git_version(root: &Path) -> String {
 
 /// Parse a single tag line from git output into a RevisionHistoryEntry
 ///
+/// Only annotated tags are included. Lightweight tags that match the version
+/// pattern are skipped with a warning logged.
+///
 /// # Parameters
-/// * `line` - A line in format "tag_name|iso_date|description"
+/// * `line` - A line in format "tag_name|object_type|tagger_date|description"
 /// * `re` - Regex to filter matching tags
 ///
 /// # Returns
-/// * Some(RevisionHistoryEntry) if line is valid and matches pattern
-/// * None if line is invalid or doesn't match pattern
+/// * Some(RevisionHistoryEntry) if line is a valid annotated tag matching pattern
+/// * None if line is invalid, doesn't match pattern, or is a lightweight tag
 fn parse_tag_line(line: &str, re: &Regex) -> Option<RevisionHistoryEntry> {
-    let parts: Vec<&str> = line.splitn(3, '|').collect();
-    if parts.len() < 2 {
+    let parts: Vec<&str> = line.splitn(4, '|').collect();
+    if parts.len() < 3 {
         return None;
     }
 
     let version = parts[0].to_string();
+    let object_type = parts[1];
+
+    // Check if version matches the pattern
     if !re.is_match(&version) {
+        return None;
+    }
+
+    // Check if this is an annotated tag (objecttype == "tag")
+    // Lightweight tags have objecttype == "commit"
+    if object_type != "tag" {
+        log::warn!(
+            "Skipping lightweight tag '{}' - use annotated tags (git tag -a) or GitHub Releases for revision history",
+            version
+        );
         return None;
     }
 
     Some(RevisionHistoryEntry {
         version,
-        date: parts.get(1).unwrap_or(&"").to_string(),
-        description: parts.get(2).unwrap_or(&"").to_string(),
+        date: parts.get(2).unwrap_or(&"").to_string(),
+        description: parts.get(3).unwrap_or(&"").to_string(),
     })
 }
 
-/// Get revision history from git tags filtered by pattern
+/// Get revision history from annotated git tags filtered by pattern
+///
+/// Only annotated tags (created with `git tag -a` or GitHub Releases) are included.
+/// Lightweight tags that match the pattern are skipped with a warning logged.
 ///
 /// # Parameters
 /// * `root` - Root directory of the document (git repository)
 /// * `pattern` - Regex pattern to filter which tags are included
 ///
 /// # Returns
-/// * Vector of RevisionHistoryEntry sorted by date (oldest first)
-/// * May be empty if no matching tags exist or git command fails
+/// * Vector of RevisionHistoryEntry sorted by semantic version (lowest first)
+/// * May be empty if no matching annotated tags exist or git command fails
 fn get_git_revision_history(root: &Path, pattern: &str) -> Vec<RevisionHistoryEntry> {
     // Compile regex, falling back to default if invalid
     let re = match Regex::new(pattern) {
@@ -255,14 +274,17 @@ fn get_git_revision_history(root: &Path, pattern: &str) -> Vec<RevisionHistoryEn
         }
     };
 
-    // Get all tags with dates and messages
-    // Format: tag_name|iso_date|subject_line
+    // Get all tags with type, dates and messages, sorted by semantic version
+    // Format: tag_name|object_type|tagger_date|subject_line
+    // Using version:refname sort for proper numeric ordering (v1.1.2 < v1.1.10)
+    // objecttype is "tag" for annotated tags, "commit" for lightweight tags
+    // taggerdate is empty for lightweight tags (they have no tagger)
     match std::process::Command::new("git")
         .args([
             "tag",
             "-l",
-            "--sort=creatordate",
-            "--format=%(refname:short)|%(creatordate:iso-strict)|%(contents:subject)",
+            "--sort=version:refname",
+            "--format=%(refname:short)|%(objecttype)|%(taggerdate:iso-strict)|%(contents:subject)",
         ])
         .current_dir(root)
         .output()
