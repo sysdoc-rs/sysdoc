@@ -92,6 +92,10 @@ pub enum Commands {
         /// DOCX export engine (template preserves styles, docx-rust/docx-rs are alternatives)
         #[arg(long, value_enum, default_value = "template")]
         engine: DocxEngine,
+
+        /// Require sandbox to be active (fail if sandboxing unavailable)
+        #[arg(long)]
+        require_sandbox: bool,
     },
 
     /// Validate document structure and references

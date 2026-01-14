@@ -1,0 +1,10 @@
+target/
+.git/
+.gitignore
+.devcontainer/
+*.md
+!README.md
+.env*
+.vscode/
+test-input/
+test-output/

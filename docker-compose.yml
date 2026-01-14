@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  sysdoc:
+    build: .
+    volumes:
+      - ./test-input:/input:ro
+      - ./test-output:/output
+    # Security hardening at container level as defense in depth
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+    # Network disabled at container level
+    network_mode: none
