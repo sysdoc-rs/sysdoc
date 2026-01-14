@@ -730,7 +730,7 @@ body {
 .metadata {
     margin-bottom: 40px;
     padding: 20px;
-    background-color: #f9f9f9;
+    background-color: rgba(255, 255, 255, 0.85);
     border-left: 4px solid #0066cc;
     border-radius: 4px;
 }
@@ -769,7 +769,7 @@ body {
 .revision-history {
     margin-bottom: 40px;
     padding: 20px;
-    background-color: #f9f9f9;
+    background-color: rgba(255, 255, 255, 0.85);
     border-left: 4px solid #0066cc;
     border-radius: 4px;
 }
