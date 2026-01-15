@@ -47,6 +47,7 @@ pub use error::{SandboxError, SandboxStatus};
 
 // Re-export the platform-specific implementation
 #[cfg(target_os = "linux")]
+#[allow(unused_imports)]
 pub use linux::{enter_sandbox, is_sandboxing_available};
 
 #[cfg(not(target_os = "linux"))]
