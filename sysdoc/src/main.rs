@@ -170,6 +170,7 @@ fn handle_init_command(
 }
 
 /// Handle the build command
+#[allow(clippy::too_many_arguments)]
 fn handle_build_command(
     input: std::path::PathBuf,
     mut output: std::path::PathBuf,

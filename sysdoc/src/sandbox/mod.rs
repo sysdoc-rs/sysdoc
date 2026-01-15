@@ -41,7 +41,8 @@ mod linux;
 #[cfg(not(target_os = "linux"))]
 mod noop;
 
-// Re-export public types
+// Re-export public types (allow unused - these are part of the public API)
+#[allow(unused_imports)]
 pub use error::{SandboxError, SandboxStatus};
 
 // Re-export the platform-specific implementation
@@ -49,6 +50,7 @@ pub use error::{SandboxError, SandboxStatus};
 pub use linux::{enter_sandbox, is_sandboxing_available};
 
 #[cfg(not(target_os = "linux"))]
+#[allow(unused_imports)]
 pub use noop::{enter_sandbox, is_sandboxing_available};
 
 #[cfg(test)]
