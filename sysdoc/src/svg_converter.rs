@@ -41,7 +41,10 @@ pub struct ConversionResult {
 /// # Returns
 /// * `Ok(ConversionResult)` - PNG bytes and dimensions
 /// * `Err(SvgConversionError)` - Conversion failed
-pub fn svg_to_png(svg_data: &[u8], dpi: Option<f32>) -> Result<ConversionResult, SvgConversionError> {
+pub fn svg_to_png(
+    svg_data: &[u8],
+    dpi: Option<f32>,
+) -> Result<ConversionResult, SvgConversionError> {
     let dpi = dpi.unwrap_or(DEFAULT_CONVERSION_DPI);
 
     // Parse SVG using usvg
