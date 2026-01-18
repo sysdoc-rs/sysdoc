@@ -1,7 +1,6 @@
 # Rust/Cargo
 /target/
 **/target/
-Cargo.lock
 
 # Debug and build artifacts
 **/*.rs.bk
@@ -38,3 +37,7 @@ target/test-output/
 
 !sysdoc/src/templates/template.docx
 !tests/fixtures/template.docx
+
+# Test directories
+test-input/
+test-output/

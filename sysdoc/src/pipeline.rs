@@ -16,8 +16,63 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 use walkdir::WalkDir;
 
+/// Git metadata collected before sandbox initialization
+///
+/// This structure holds version control information that requires executing
+/// git commands. It should be collected before entering the sandbox (which
+/// blocks process execution) and passed to the transform stage.
+#[derive(Debug, Clone, Default)]
+pub struct GitMetadata {
+    /// Version string from git describe (e.g., "v1.2.3" or "v1.2.3-5-gabcdef-dirty")
+    pub version: Option<String>,
+    /// ISO 8601 timestamp of HEAD commit
+    pub modified: Option<String>,
+    /// Revision history from annotated git tags
+    pub revision_history: Vec<RevisionHistoryEntry>,
+}
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+
+/// Collect git metadata before sandbox initialization
+///
+/// This function executes git commands to collect version control metadata.
+/// It must be called **before** entering the sandbox, as the sandbox blocks
+/// process execution (execve syscall).
+///
+/// # Parameters
+/// * `root` - Root directory of the git repository
+/// * `revision_tag_pattern` - Regex pattern to filter which git tags appear in revision history
+///
+/// # Returns
+/// * `GitMetadata` - Collected metadata (fields will be None/empty if git commands fail)
+///
+/// # Note
+/// This function logs warnings if git commands fail but does not return errors,
+/// allowing the build to continue without version control information.
+pub fn collect_git_metadata(root: &Path, revision_tag_pattern: &str) -> GitMetadata {
+    let version_string = get_git_version(root);
+    let version = if version_string.is_empty() {
+        None
+    } else {
+        Some(version_string)
+    };
+
+    let modified_string = get_git_head_commit_date(root);
+    let modified = if modified_string.is_empty() {
+        None
+    } else {
+        Some(modified_string)
+    };
+
+    let revision_history = get_git_revision_history(root, revision_tag_pattern);
+
+    GitMetadata {
+        version,
+        modified,
+        revision_history,
+    }
+}
 
 /// Stage 1: Parse all source files
 ///
@@ -348,27 +403,25 @@ fn get_git_head_commit_date(root: &Path) -> String {
 ///
 /// # Parameters
 /// * `source` - Parsed source model containing all markdown, image, and table files
+/// * `git_metadata` - Optional pre-collected git metadata. If None, git commands will be
+///   executed (which will fail if sandbox is active). Should be collected before sandbox.
 ///
 /// # Returns
 /// * `Ok(UnifiedDocument)` - Successfully transformed unified document ready for export
 /// * `Err(TransformError)` - Error building document structure
-pub fn transform(source: SourceModel) -> Result<UnifiedDocument, TransformError> {
-    let version_string = get_git_version(&source.root);
-    let version = if version_string.is_empty() {
-        None
-    } else {
-        Some(version_string)
-    };
+pub fn transform(
+    source: SourceModel,
+    git_metadata: Option<GitMetadata>,
+) -> Result<UnifiedDocument, TransformError> {
+    // Use pre-collected git metadata if provided, otherwise collect it now
+    let git_meta = git_metadata.unwrap_or_else(|| {
+        log::debug!("Collecting git metadata during transform (not provided pre-sandbox)");
+        collect_git_metadata(&source.root, &source.config.revision_tag_pattern)
+    });
 
-    let modified_string = get_git_head_commit_date(&source.root);
-    let modified = if modified_string.is_empty() {
-        None
-    } else {
-        Some(modified_string)
-    };
-
-    let revision_history =
-        get_git_revision_history(&source.root, &source.config.revision_tag_pattern);
+    let version = git_meta.version;
+    let modified = git_meta.modified;
+    let revision_history = git_meta.revision_history;
 
     let metadata = DocumentMetadata {
         system_id: source.config.system_id.clone(),

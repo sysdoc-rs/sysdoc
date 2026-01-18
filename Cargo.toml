@@ -33,5 +33,10 @@ typst-kit = "0.13"
 comemo = "0.4"
 regex = "1.11"
 
+# Linux sandboxing dependencies
+landlock = "0.4"
+seccompiler = "0.4"
+libc = "0.2"
+
 # [patch.crates-io]
 # docx-rust = { path = "C:/Development/docx-rs" }

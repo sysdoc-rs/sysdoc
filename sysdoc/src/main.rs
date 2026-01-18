@@ -19,6 +19,7 @@ mod cli;
 mod document_config;
 mod document_model;
 mod document_section;
+mod sandbox;
 mod template_config;
 mod templates;
 mod walker;
@@ -77,8 +78,18 @@ fn run() -> Result<()> {
             no_toc: _,
             no_images,
             engine,
+            require_sandbox,
         } => {
-            handle_build_command(input, output, format, watch, verbose, no_images, engine)?;
+            handle_build_command(
+                input,
+                output,
+                format,
+                watch,
+                verbose,
+                no_images,
+                engine,
+                require_sandbox,
+            )?;
         }
 
         Commands::Validate {
@@ -159,6 +170,7 @@ fn handle_init_command(
 }
 
 /// Handle the build command
+#[allow(clippy::too_many_arguments)]
 fn handle_build_command(
     input: std::path::PathBuf,
     mut output: std::path::PathBuf,
@@ -167,6 +179,7 @@ fn handle_build_command(
     verbose: bool,
     no_images: bool,
     engine: DocxEngine,
+    require_sandbox: bool,
 ) -> Result<()> {
     // Canonicalize input path to get absolute path with drive letter on Windows
     let input = input
@@ -232,6 +245,59 @@ fn handle_build_command(
         source_model.markdown_files.len()
     );
 
+    // Collect git metadata BEFORE entering sandbox (git commands require execve)
+    log::info!("Collecting git metadata before sandbox initialization...");
+    let git_metadata =
+        pipeline::collect_git_metadata(&input, &source_model.config.revision_tag_pattern);
+
+    if let Some(ref version) = git_metadata.version {
+        log::info!("Git version: {}", version);
+    }
+    if !git_metadata.revision_history.is_empty() {
+        log::info!(
+            "Found {} revision history entries",
+            git_metadata.revision_history.len()
+        );
+    }
+
+    // Initialize sandbox after git metadata collection but before any further operations
+    let mut allowed_paths = vec![input.clone()];
+
+    // Add output path (or its parent if output is a file)
+    if output.is_dir() || output.extension().is_none() {
+        // Output is a directory
+        allowed_paths.push(output.clone());
+    } else {
+        // Output is a file, allow access to its parent directory
+        if let Some(parent) = output.parent() {
+            allowed_paths.push(parent.to_path_buf());
+        }
+    }
+
+    // Check environment variable for requiring sandbox
+    let require_sandbox = require_sandbox
+        || std::env::var("SYSDOC_REQUIRE_SANDBOX")
+            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .unwrap_or(false);
+
+    match sandbox::enter_sandbox(&allowed_paths) {
+        Ok(status) => {
+            log::info!("Sandbox status: {}", status);
+            if require_sandbox && !status.is_fully_protected() {
+                anyhow::bail!(
+                    "--require-sandbox specified but full protection unavailable (status: {})",
+                    status
+                );
+            }
+        }
+        Err(e) => {
+            log::warn!("Failed to initialize sandbox: {}", e);
+            if require_sandbox {
+                return Err(e.into());
+            }
+        }
+    }
+
     // Extract template path from config before consuming source_model
     let docx_template_path = source_model
         .config
@@ -239,9 +305,9 @@ fn handle_build_command(
         .as_ref()
         .map(|p| input.join(p));
 
-    // Stage 2: Transform to unified document
+    // Stage 2: Transform to unified document with pre-collected git metadata
     println!("\n[Stage 2/3] Transforming to unified document...");
-    let unified_doc = pipeline::transform(source_model)
+    let unified_doc = pipeline::transform(source_model, Some(git_metadata))
         .with_context(|| "Failed to transform source model to unified document")?;
 
     println!("✓ Transformed {} sections", unified_doc.sections.len());

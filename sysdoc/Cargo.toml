@@ -34,5 +34,11 @@ typst-kit = { workspace = true }
 comemo = { workspace = true }
 regex = { workspace = true }
 
+# Linux-only sandboxing dependencies
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = { workspace = true }
+seccompiler = { workspace = true }
+libc = { workspace = true }
+
 [dev-dependencies]
 pulldown-cmark = { workspace = true, features = ["default"] }
