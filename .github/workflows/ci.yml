@@ -197,7 +197,7 @@ jobs:
         run: |
           # Try to run with --require-sandbox
           # This may fail on older kernels or in restricted CI environments
-          ./target/release/sysdoc build --input test-input --output test-output/test.md --verbose || {
+          ./target/release/sysdoc build test-input --output test-output/test.md --verbose || {
             echo "Note: Sandbox test completed (may have warnings on older kernels)"
           }
 
@@ -226,7 +226,7 @@ jobs:
             -v $(pwd)/test-input:/input:ro \
             -v $(pwd)/test-output:/output \
             --network none \
-            sysdoc:test build --input /input --output /output/test.md
+            sysdoc:test build /input --output /output/test.md
 
       - name: Verify output
         run: |
