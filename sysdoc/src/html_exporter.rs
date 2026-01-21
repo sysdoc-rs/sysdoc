@@ -254,8 +254,8 @@ fn write_revision_history(output: &mut String, doc: &UnifiedDocument) {
 
 /// Write a single section to the output
 fn write_section(output: &mut String, section: &MarkdownSection) -> Result<(), HtmlExportError> {
-    // Determine heading level (h1-h6)
-    let level = section.heading_level.min(6);
+    // Effective level is derived from section depth (e.g., section 3.1.1 becomes h3)
+    let level = section.section_number.effective_heading_level();
 
     // Write heading with section number
     output.push_str(&format!(

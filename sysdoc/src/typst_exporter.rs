@@ -583,8 +583,9 @@ fn generate_title_page(doc: &UnifiedDocument) -> String {
 fn generate_section(section: &MarkdownSection) -> String {
     let mut output = String::new();
 
-    // Section heading with number
-    let heading_prefix = "=".repeat(section.heading_level);
+    // Effective level is derived from section depth (e.g., section 3.1.1 becomes h3)
+    let effective_level = section.section_number.effective_heading_level();
+    let heading_prefix = "=".repeat(effective_level);
     output.push_str(&format!(
         "{} {} {}\n\n",
         heading_prefix,
