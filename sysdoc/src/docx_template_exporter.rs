@@ -315,11 +315,8 @@ fn generate_content_xml(
     let mut xml = String::new();
 
     for section in sections {
-        // Generate heading with effective level based on section depth
-        // (e.g., h1 in section 3.1.1 becomes h3)
-        let heading_level = section
-            .section_number
-            .effective_heading_level(section.heading_level);
+        // Effective level is derived from section depth (e.g., section 3.1.1 becomes h3)
+        let heading_level = section.section_number.effective_heading_level();
         let style_id = format!("Heading{}", heading_level.min(9));
         let heading_text = format!("{} {}", section.section_number, section.heading_text);
 

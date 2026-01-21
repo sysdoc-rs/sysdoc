@@ -117,17 +117,13 @@ impl SectionNumber {
 
     /// Calculate the effective heading level for output based on section number depth
     ///
-    /// For a section with number "3.1.1" (depth 2), an h1 becomes h3, h2 becomes h4, etc.
-    /// The formula is: original_level + depth, clamped to 1-6.
-    ///
-    /// # Parameters
-    /// * `original_level` - The heading level from the source markdown (1 for h1, 2 for h2, etc.)
+    /// The section number already encodes the full hierarchy (e.g., "3.1.2.1" for an h2
+    /// under section 3.1.2), so the effective level is simply depth + 1.
     ///
     /// # Returns
     /// * `usize` - The effective heading level for output, clamped to 1-6
-    pub fn effective_heading_level(&self, original_level: usize) -> usize {
-        let adjusted = original_level.saturating_add(self.depth());
-        adjusted.clamp(1, 6)
+    pub fn effective_heading_level(&self) -> usize {
+        (self.depth() + 1).clamp(1, 6)
     }
 
     /// Get a slice of the valid parts
@@ -254,27 +250,28 @@ mod tests {
 
     #[test]
     fn test_effective_heading_level() {
-        // Section 01 (depth 0): h1 stays h1, h2 stays h2
+        // Section 01 (depth 0): effective level = 0 + 1 = 1
         let num1 = SectionNumber::parse("01").unwrap();
-        assert_eq!(num1.effective_heading_level(1), 1);
-        assert_eq!(num1.effective_heading_level(2), 2);
+        assert_eq!(num1.effective_heading_level(), 1);
 
-        // Section 01.02 (depth 1): h1 becomes h2, h2 becomes h3
+        // Section 01.02 (depth 1): effective level = 1 + 1 = 2
         let num2 = SectionNumber::parse("01.02").unwrap();
-        assert_eq!(num2.effective_heading_level(1), 2);
-        assert_eq!(num2.effective_heading_level(2), 3);
+        assert_eq!(num2.effective_heading_level(), 2);
 
-        // Section 03.01.01 (depth 2): h1 becomes h3, h2 becomes h4
+        // Section 03.01.01 (depth 2): effective level = 2 + 1 = 3
         let num3 = SectionNumber::parse("03.01.01").unwrap();
-        assert_eq!(num3.effective_heading_level(1), 3);
-        assert_eq!(num3.effective_heading_level(2), 4);
+        assert_eq!(num3.effective_heading_level(), 3);
 
-        // Deep section with h5: clamped to h6 (depth 3 + level 5 = 8, clamped to 6)
-        let num4 = SectionNumber::parse("01.02.03.04").unwrap();
-        assert_eq!(num4.effective_heading_level(5), 6);
+        // Section 3.1.2.1 (h2 under 3.1.2): depth 3, effective level = 3 + 1 = 4
+        let num4 = SectionNumber::parse("03.01.02.01").unwrap();
+        assert_eq!(num4.effective_heading_level(), 4);
 
-        // Maximum depth section: depth 5, h1 becomes h6
-        let num5 = SectionNumber::parse("01.02.03.04.05.06").unwrap();
-        assert_eq!(num5.effective_heading_level(1), 6);
+        // Deep section: depth 3, effective level = 3 + 1 = 4
+        let num5 = SectionNumber::parse("01.02.03.04").unwrap();
+        assert_eq!(num5.effective_heading_level(), 4);
+
+        // Maximum depth section: depth 5, effective level = 5 + 1 = 6
+        let num6 = SectionNumber::parse("01.02.03.04.05.06").unwrap();
+        assert_eq!(num6.effective_heading_level(), 6);
     }
 }

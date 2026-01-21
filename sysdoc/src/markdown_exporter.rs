@@ -151,10 +151,8 @@ fn write_section(
     section: &MarkdownSection,
 ) -> Result<(), MarkdownExportError> {
     // Write heading with section number
-    // Adjust heading level based on section depth (e.g., h1 in section 3.1.1 becomes h3)
-    let effective_level = section
-        .section_number
-        .effective_heading_level(section.heading_level);
+    // Effective level is derived from section depth (e.g., section 3.1.1 becomes h3)
+    let effective_level = section.section_number.effective_heading_level();
     let heading_prefix = "#".repeat(effective_level);
     output.push_str(&format!(
         "{} {} {}\n\n",
