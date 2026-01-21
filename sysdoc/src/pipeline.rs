@@ -459,24 +459,24 @@ fn build_section_hierarchy(
 
 /// Stage 3: Export unified document to various formats
 pub mod export {
-    use crate::docx_rust_exporter;
+    use crate::docx_template_exporter;
     use crate::html_exporter;
     use crate::markdown_exporter;
     use crate::unified_document::UnifiedDocument;
     use std::path::Path;
 
-    // Re-export types from docx_rust_exporter
-    pub use docx_rust_exporter::ExportError;
+    // Re-export types from docx_template_exporter
+    pub use docx_template_exporter::ExportError;
 
-    /// Export to Microsoft Word (.docx) using the docx-rust library
+    /// Export to Microsoft Word (.docx) using the template-preserving exporter
     ///
-    /// This is a thin wrapper around `docx_rust_exporter::to_docx`.
+    /// This is a thin wrapper around `docx_template_exporter::to_docx`.
     pub fn to_docx(
         doc: &UnifiedDocument,
         template_path: &Path,
         output_path: &Path,
     ) -> Result<(), ExportError> {
-        docx_rust_exporter::to_docx(doc, template_path, output_path)
+        docx_template_exporter::to_docx(doc, template_path, output_path)
     }
 
     /// Export to aggregated markdown file with numbered headings and embedded images
@@ -490,7 +490,7 @@ pub mod export {
     /// * `Err(ExportError)` - Error during export
     pub fn to_markdown(doc: &UnifiedDocument, output_path: &Path) -> Result<(), ExportError> {
         markdown_exporter::to_markdown(doc, output_path)
-            .map_err(|e| ExportError::IoError(std::io::Error::other(e.to_string())))
+            .map_err(|e| ExportError::Io(std::io::Error::other(e.to_string())))
     }
 
     /// Export to HTML file with numbered headings and embedded images
@@ -504,7 +504,7 @@ pub mod export {
     /// * `Err(ExportError)` - Error during export
     pub fn to_html(doc: &UnifiedDocument, output_path: &Path) -> Result<(), ExportError> {
         html_exporter::to_html(doc, output_path)
-            .map_err(|e| ExportError::IoError(std::io::Error::other(e.to_string())))
+            .map_err(|e| ExportError::Io(std::io::Error::other(e.to_string())))
     }
 }
 

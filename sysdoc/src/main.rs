@@ -28,9 +28,7 @@ mod pipeline;
 mod source_model;
 mod unified_document;
 
-// DOCX exporters (allows swapping between docx-rust and docx-rs implementations)
-mod docx_rs_exporter;
-mod docx_rust_exporter;
+// DOCX exporter (template-preserving)
 mod docx_template_exporter;
 
 // Markdown exporter
@@ -44,7 +42,7 @@ mod typst_exporter;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use cli::{Cli, Commands, DocxEngine, OutputFormat};
+use cli::{Cli, Commands, OutputFormat};
 
 /// Main entry point for the sysdoc CLI application
 fn main() {
@@ -76,9 +74,8 @@ fn run() -> Result<()> {
             verbose,
             no_toc: _,
             no_images,
-            engine,
         } => {
-            handle_build_command(input, output, format, watch, verbose, no_images, engine)?;
+            handle_build_command(input, output, format, watch, verbose, no_images)?;
         }
 
         Commands::Validate {
@@ -166,7 +163,6 @@ fn handle_build_command(
     watch: bool,
     verbose: bool,
     no_images: bool,
-    engine: DocxEngine,
 ) -> Result<()> {
     // Canonicalize input path to get absolute path with drive letter on Windows
     let input = input
@@ -264,38 +260,13 @@ fn handle_build_command(
 
     match format {
         OutputFormat::Docx => {
-            match engine {
-                DocxEngine::DocxRust => {
-                    let template_path = docx_template_path.as_ref().ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "DOCX export with docx-rust engine requires a template. Set 'docx_template_path' in sysdoc.toml or use --engine=docx-rs"
-                        )
-                    })?;
-                    println!("Using docx-rust engine (template-based)");
-                    docx_rust_exporter::to_docx(&unified_doc, template_path, &output)
-                        .with_context(|| {
-                            format!("Failed to export DOCX to {}", output.display())
-                        })?;
-                }
-                DocxEngine::DocxRs => {
-                    println!("Using docx-rs engine (template-free)");
-                    docx_rs_exporter::to_docx(&unified_doc, &output).with_context(|| {
-                        format!("Failed to export DOCX to {}", output.display())
-                    })?;
-                }
-                DocxEngine::Template => {
-                    let template_path = docx_template_path.as_ref().ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "DOCX export with template engine requires a template. Set 'docx_template_path' in sysdoc.toml"
-                        )
-                    })?;
-                    println!("Using template-preserving engine (preserves title page and styles)");
-                    docx_template_exporter::to_docx(&unified_doc, template_path, &output)
-                        .with_context(|| {
-                            format!("Failed to export DOCX to {}", output.display())
-                        })?;
-                }
-            }
+            let template_path = docx_template_path.as_ref().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "DOCX export requires a template. Set 'docx_template_path' in sysdoc.toml"
+                )
+            })?;
+            docx_template_exporter::to_docx(&unified_doc, template_path, &output)
+                .with_context(|| format!("Failed to export DOCX to {}", output.display()))?;
             println!("✓ Successfully wrote: {}", output.display());
         }
         OutputFormat::Markdown => {
