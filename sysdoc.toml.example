@@ -30,6 +30,8 @@ document_title = "Flight Control Software Design Description"
 #   - STP: Software Test Plan
 #   - STD: Software Test Description
 #   - STR: Software Test Report
+#   - SUM: Software User Manual
+#   - SPS: Software Product Specification
 document_type = "SDD"
 
 # Standard or Data Item Description (DID) the document follows
@@ -37,6 +39,9 @@ document_type = "SDD"
 #   - DI-IPSC-81435B (SDD)
 #   - DI-IPSC-81433A (SRS)
 #   - DI-IPSC-81436A (ICD)
+#   - DI-IPSC-81438A (STD)
+#   - DI-IPSC-81439A (STR)
+#   - DI-IPSC-81440A (SUM)
 #   - MIL-STD-498
 document_standard = "DI-IPSC-81435B"
 
@@ -44,7 +49,26 @@ document_standard = "DI-IPSC-81435B"
 # This helps track which template version was used
 document_template = "sdd-standard-v1"
 
+# Optional path to a .docx file to use as template for generated DOCX files
+# The path should be relative to the document root
+# Required for DOCX export functionality
+# docx_template_path = "templates/standard.docx"
+
+# Optional protection/classification marking for document headers and footers
+# Examples: "PC-PROTECTED//DESIGN", "CONFIDENTIAL", "INTERNAL USE ONLY"
+# protection_mark = "PC-PROTECTED//DESIGN"
+
+# Optional regex pattern to filter which git tags appear in revision history
+# Default matches v1.0.0+ and excludes v0.x.x releases
+# revision_tag_pattern = "^v[1-9]\\d*\\.\\d+\\.\\d+$"
+
+# Optional path to a background image for the title page (used in PDF and HTML outputs)
+# The path should be relative to the document root or absolute
+# Supported formats: PNG, JPEG, SVG
+# title_page_background = "images/title-background.png"
+
 # Document owner/author information
+# The name is used for dc:creator in DOCX metadata
 [document_owner]
 name = "John Doe"
 email = "john.doe@example.com"
@@ -53,8 +77,3 @@ email = "john.doe@example.com"
 [document_approver]
 name = "Jane Smith"
 email = "jane.smith@example.com"
-
-# Optional path to a background image for the title page (used in PDF and HTML outputs)
-# The path should be relative to the document root or absolute
-# Supported formats: PNG, JPEG, SVG
-# title_page_background = "images/title-background.png"
