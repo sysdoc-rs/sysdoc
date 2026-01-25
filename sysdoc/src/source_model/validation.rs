@@ -33,6 +33,14 @@ pub enum ValidationError {
         second_location: PathBuf,
         second_line: usize,
     },
+
+    /// A broken internal link was found
+    #[error("Broken link '{link_target}' in '{referenced_in}'", referenced_in = referenced_in.display())]
+    BrokenLink {
+        referenced_in: PathBuf,
+        link_target: String,
+    },
+
     /// Multiple validation errors
     #[error("Multiple validation errors: {}", format_errors(.0))]
     Multiple(Vec<ValidationError>),

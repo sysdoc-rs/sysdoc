@@ -84,11 +84,10 @@ fn run() -> Result<()> {
         Commands::Validate {
             input,
             verbose,
-            check_links,
             check_images,
             check_tables,
         } => {
-            handle_validate_command(input, verbose, check_links, check_images, check_tables)?;
+            handle_validate_command(input, verbose, check_images, check_tables)?;
         }
 
         Commands::ListTemplates => {
@@ -299,30 +298,126 @@ fn handle_build_command(
 }
 
 /// Handle the validate command
+///
+/// Validates the document structure and references. By default, all validation
+/// checks are run. Use `--check-images` or `--check-tables` to run only specific checks.
+///
+/// # Parameters
+/// * `input` - Path to the document directory containing sysdoc.toml
+/// * `verbose` - Show detailed validation output
+/// * `check_images` - Only check image references
+/// * `check_tables` - Only check CSV table references
+///
+/// # Returns
+/// * `Ok(())` - All validation checks passed
+/// * `Err` - Validation failed with error details
 fn handle_validate_command(
     input: std::path::PathBuf,
     verbose: bool,
-    check_links: bool,
     check_images: bool,
     check_tables: bool,
 ) -> Result<()> {
-    println!("Validating document structure...");
-    println!("Input: {}", input.display());
-    if verbose {
-        println!("Verbose mode enabled");
-    }
-    if check_links {
-        println!("Checking internal links");
-    }
-    if check_images {
-        println!("Checking image files");
-    }
-    if check_tables {
-        println!("Checking table references");
-    }
-    // TODO: Implement validation logic
+    // Determine if we're running selective checks or all checks
+    let selective_mode = check_images || check_tables;
 
-    Ok(())
+    if verbose {
+        println!("Validating document at: {}", input.display());
+        if selective_mode {
+            if check_images {
+                println!("  - Checking image references");
+            }
+            if check_tables {
+                println!("  - Checking table references");
+            }
+        } else {
+            println!("  - Running all validation checks");
+        }
+    }
+
+    // Check that sysdoc.toml exists
+    let config_path = input.join("sysdoc.toml");
+    if !config_path.exists() {
+        anyhow::bail!(
+            "No sysdoc.toml found in '{}'. Is this a sysdoc project directory?",
+            input.display()
+        );
+    }
+
+    // Parse sources - this runs validation internally
+    // Note: validation is all-or-nothing. The --check-images and --check-tables flags
+    // are kept for backwards compatibility but don't filter which validations run.
+    match pipeline::parse_sources(&input) {
+        Ok(model) => {
+            // All checks passed (parse_sources would have failed if validation failed)
+            if verbose {
+                let section_count = count_sections(&model);
+                let image_count = count_images(&model);
+                let table_count = count_tables(&model);
+                println!("  Found {} sections", section_count);
+                println!("  Found {} image references", image_count);
+                println!("  Found {} table references", table_count);
+            }
+            println!("✓ Validation passed");
+            Ok(())
+        }
+        Err(e) => {
+            // Validation failed - format the error nicely
+            eprintln!("✗ Validation failed:\n");
+            eprintln!("{}", format_parse_error(&e));
+            anyhow::bail!("Validation failed")
+        }
+    }
+}
+
+/// Count the number of image references in the model
+fn count_images(model: &source_model::SourceModel) -> usize {
+    model
+        .markdown_files
+        .iter()
+        .flat_map(|f| f.sections.iter())
+        .flat_map(|s| s.content.iter())
+        .filter(|block| matches!(block, source_model::MarkdownBlock::Image { .. }))
+        .count()
+}
+
+/// Count the number of table references in the model
+fn count_tables(model: &source_model::SourceModel) -> usize {
+    model
+        .markdown_files
+        .iter()
+        .flat_map(|f| f.sections.iter())
+        .flat_map(|s| s.content.iter())
+        .filter(|block| matches!(block, source_model::MarkdownBlock::CsvTable { .. }))
+        .count()
+}
+
+/// Count the number of sections in the model
+fn count_sections(model: &source_model::SourceModel) -> usize {
+    model.markdown_files.iter().map(|f| f.sections.len()).sum()
+}
+
+/// Format a parse error for user-friendly display
+fn format_parse_error(error: &pipeline::ParseError) -> String {
+    match error {
+        pipeline::ParseError::ValidationError(ve) => format_validation_error(ve),
+        _ => format!("  {}", error),
+    }
+}
+
+/// Format a validation error for user-friendly display
+fn format_validation_error(error: &source_model::ValidationError) -> String {
+    use source_model::ValidationError;
+
+    match error {
+        ValidationError::Multiple(errors) => {
+            let mut output = String::new();
+            for e in errors {
+                output.push_str(&format!("  - {}\n", e));
+            }
+            output
+        }
+        _ => format!("  - {}", error),
+    }
 }
 
 /// Handle the list-templates command

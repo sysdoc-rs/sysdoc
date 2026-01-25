@@ -88,10 +88,6 @@ pub enum Commands {
         #[arg(short, long)]
         verbose: bool,
 
-        /// Validate all internal references
-        #[arg(long)]
-        check_links: bool,
-
         /// Verify all image files exist
         #[arg(long)]
         check_images: bool,
