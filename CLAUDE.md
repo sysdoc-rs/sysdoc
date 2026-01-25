@@ -123,8 +123,8 @@ Preparing for v1.0.0 release on crates.io.
 
 ### 2. Integrate Validation into Build
 
-- [ ] Run validation automatically before building
-- [ ] Fail the build if validation fails
+- [x] Run validation automatically before building
+- [x] Fail the build if validation fails
 - **Files**: `sysdoc/src/main.rs`, `sysdoc/src/pipeline.rs`
 
 ### 3. Remove Unimplemented --watch Flag

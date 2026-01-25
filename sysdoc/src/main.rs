@@ -220,13 +220,18 @@ fn handle_build_command(
     println!("Input: {}", input.display());
     println!("Output: {}", output.display());
 
-    // Stage 1: Parse all source files
+    // Stage 1: Parse all source files (includes validation)
     println!("\n[Stage 1/3] Parsing source files...");
-    let source_model = pipeline::parse_sources(&input)
-        .with_context(|| format!("Failed to parse sources from {}", input.display()))?;
-
+    let source_model = match pipeline::parse_sources(&input) {
+        Ok(model) => model,
+        Err(e) => {
+            eprintln!("✗ Validation failed:\n");
+            eprintln!("{}", format_parse_error(&e));
+            anyhow::bail!("Build failed due to validation errors");
+        }
+    };
     println!(
-        "✓ Parsed {} markdown files",
+        "✓ Parsed {} markdown files, validation passed",
         source_model.markdown_files.len()
     );
 
