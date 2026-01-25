@@ -113,13 +113,13 @@ Preparing for v1.0.0 release on crates.io.
 
 ### 1. Implement Validation Command
 
-- [ ] Implement `sysdoc validate` with all checks:
-  - Broken image references (--check-images)
-  - Broken CSV references (--check-tables)
-  - Broken internal markdown links (--check-links)
+- [x] Implement `sysdoc validate` with all checks:
+  - Broken image references (always validated)
+  - Broken CSV references (always validated)
+  - Broken internal markdown links (always validated, --check-links removed)
   - sysdoc.toml configuration validity
-- [ ] Exit with non-zero code when validation fails
-- **Files**: `sysdoc/src/main.rs` (line ~320), possibly new validation module
+- [x] Exit with non-zero code when validation fails
+- **Files**: `sysdoc/src/main.rs`, `sysdoc/src/source_model.rs`, `sysdoc/src/source_model/validation.rs`
 
 ### 2. Integrate Validation into Build
 

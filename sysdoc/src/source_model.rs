@@ -64,18 +64,20 @@ impl SourceModel {
     /// Validate that all referenced resources exist
     ///
     /// # Returns
-    /// * `Ok(())` - All referenced images, tables, and include files exist, and all section_ids are unique
-    /// * `Err(ValidationError)` - One or more referenced resources are missing or duplicate section_ids found
+    /// * `Ok(())` - All referenced images, tables, include files, and internal links are valid, and all section_ids are unique
+    /// * `Err(ValidationError)` - One or more referenced resources are missing, links are broken, or duplicate section_ids found
     pub fn validate(&self) -> Result<(), ValidationError> {
         let image_errors = self.validate_image_references();
         let table_errors = self.validate_table_references();
         let include_errors = self.validate_include_references();
+        let link_errors = self.validate_internal_links();
         let section_id_errors = self.validate_unique_section_ids();
 
         let errors: Vec<ValidationError> = image_errors
             .into_iter()
             .chain(table_errors)
             .chain(include_errors)
+            .chain(link_errors)
             .chain(section_id_errors)
             .collect();
 
@@ -340,6 +342,147 @@ impl SourceModel {
                 _ => None,
             })
             .collect()
+    }
+
+    /// Validate all internal links point to valid targets
+    ///
+    /// Checks that internal markdown links (non-http/https links) point to
+    /// existing files within the document. This includes:
+    /// - Links to other markdown files (e.g., `[text](other-file.md)`)
+    /// - Links to files with anchors (e.g., `[text](file.md#section)`)
+    ///
+    /// Note: Anchor-only links (`#section`) within the same file are not validated
+    /// as they require parsing heading IDs which is not currently implemented.
+    fn validate_internal_links(&self) -> Vec<ValidationError> {
+        self.markdown_files
+            .iter()
+            .flat_map(|md_file| {
+                md_file
+                    .sections
+                    .iter()
+                    .flat_map(|section| self.validate_section_links(md_file, section))
+            })
+            .collect()
+    }
+
+    /// Validate internal links in a single section
+    fn validate_section_links(
+        &self,
+        md_file: &MarkdownSource,
+        section: &MarkdownSection,
+    ) -> Vec<ValidationError> {
+        let mut errors = Vec::new();
+        self.collect_link_errors_from_blocks(&section.content, md_file, &mut errors);
+        errors
+    }
+
+    /// Recursively collect link validation errors from a list of blocks
+    fn collect_link_errors_from_blocks(
+        &self,
+        blocks: &[MarkdownBlock],
+        md_file: &MarkdownSource,
+        errors: &mut Vec<ValidationError>,
+    ) {
+        for block in blocks {
+            self.collect_link_errors_from_block(block, md_file, errors);
+        }
+    }
+
+    /// Collect link errors from a single block
+    fn collect_link_errors_from_block(
+        &self,
+        block: &MarkdownBlock,
+        md_file: &MarkdownSource,
+        errors: &mut Vec<ValidationError>,
+    ) {
+        match block {
+            MarkdownBlock::Paragraph(runs) | MarkdownBlock::Heading { runs, .. } => {
+                self.collect_link_errors_from_runs(runs, md_file, errors);
+            }
+            MarkdownBlock::List { items, .. } => {
+                for item in items {
+                    self.collect_link_errors_from_blocks(&item.content, md_file, errors);
+                }
+            }
+            MarkdownBlock::BlockQuote(nested_blocks) => {
+                self.collect_link_errors_from_blocks(nested_blocks, md_file, errors);
+            }
+            MarkdownBlock::InlineTable { headers, rows, .. } => {
+                self.collect_link_errors_from_table(headers, rows, md_file, errors);
+            }
+            // Other block types don't contain links
+            _ => {}
+        }
+    }
+
+    /// Collect link errors from table cells
+    fn collect_link_errors_from_table(
+        &self,
+        headers: &[Vec<TextRun>],
+        rows: &[Vec<Vec<TextRun>>],
+        md_file: &MarkdownSource,
+        errors: &mut Vec<ValidationError>,
+    ) {
+        for cell in headers {
+            self.collect_link_errors_from_runs(cell, md_file, errors);
+        }
+        for row in rows {
+            for cell in row {
+                self.collect_link_errors_from_runs(cell, md_file, errors);
+            }
+        }
+    }
+
+    /// Check text runs for broken internal links
+    fn collect_link_errors_from_runs(
+        &self,
+        runs: &[TextRun],
+        md_file: &MarkdownSource,
+        errors: &mut Vec<ValidationError>,
+    ) {
+        for run in runs {
+            self.check_run_for_broken_link(run, md_file, errors);
+        }
+    }
+
+    /// Check a single text run for a broken internal link
+    fn check_run_for_broken_link(
+        &self,
+        run: &TextRun,
+        md_file: &MarkdownSource,
+        errors: &mut Vec<ValidationError>,
+    ) {
+        let Some(ref url) = run.link_url else {
+            return;
+        };
+
+        // Skip external links (http/https), mailto:, and anchor-only links
+        if url.starts_with("http://")
+            || url.starts_with("https://")
+            || url.starts_with("mailto:")
+            || url.starts_with('#')
+        {
+            return;
+        }
+
+        // For file links, check if the target file exists
+        // Remove any anchor fragment from the URL
+        let file_path = url.split('#').next().unwrap_or(url);
+
+        // Skip empty paths (edge case)
+        if file_path.is_empty() {
+            return;
+        }
+
+        // Resolve the path relative to the document root
+        let target_path = self.root.join(file_path);
+
+        if !target_path.exists() {
+            errors.push(ValidationError::BrokenLink {
+                referenced_in: md_file.path.clone(),
+                link_target: url.clone(),
+            });
+        }
     }
 
     /// Validate that all section_ids are unique across all sections
