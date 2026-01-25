@@ -24,10 +24,7 @@ itertools = "0.14"
 imagesize = "0.13"
 zip = "2.2"
 base64 = "0.22"
-image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 typst = "0.13"
 typst-pdf = "0.13"
-typst-kit = "0.13"
-comemo = "0.4"
 regex = "1.11"
 

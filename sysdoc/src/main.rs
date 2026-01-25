@@ -4,6 +4,8 @@
 //! using Markdown, DrawIO, and CSV files.
 
 #![deny(unsafe_code)]
+#![deny(unused_crate_dependencies)]
+#![cfg_attr(not(debug_assertions), deny(warnings))]
 #![cfg_attr(all(not(debug_assertions), not(test)), deny(clippy::all))]
 #![cfg_attr(all(not(debug_assertions), not(test)), deny(clippy::pedantic))]
 #![cfg_attr(all(not(debug_assertions), not(test)), deny(missing_docs))]
@@ -13,6 +15,7 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::enum_variant_names)]
+// Until 1.0.0, allow dead code warnings
 #![allow(dead_code)]
 
 mod cli;
