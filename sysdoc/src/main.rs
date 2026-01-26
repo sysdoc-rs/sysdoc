@@ -200,9 +200,9 @@ fn handle_build_command(
                     );
                 }
                 None => {
-                    // No extension, default to DOCX
-                    output.set_extension("docx");
-                    OutputFormat::Docx
+                    // No extension, default to PDF
+                    output.set_extension("pdf");
+                    OutputFormat::Pdf
                 }
             }
         }
