@@ -61,10 +61,6 @@ pub enum Commands {
         #[arg(short, long, value_enum)]
         format: Option<OutputFormat>,
 
-        /// Watch for changes and rebuild automatically
-        #[arg(short, long)]
-        watch: bool,
-
         /// Verbose output
         #[arg(short, long)]
         verbose: bool,

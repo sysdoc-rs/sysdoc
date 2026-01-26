@@ -129,8 +129,8 @@ Preparing for v1.0.0 release on crates.io.
 
 ### 3. Remove Unimplemented --watch Flag
 
-- [ ] Remove `--watch` / `-w` flag from build command
-- [ ] Remove any related code paths
+- [x] Remove `--watch` / `-w` flag from build command
+- [x] Remove any related code paths
 - **Files**: `sysdoc/src/cli.rs`, `sysdoc/src/main.rs`
 
 ### 4. Add Crates.io Metadata

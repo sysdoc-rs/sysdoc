@@ -73,12 +73,11 @@ fn run() -> Result<()> {
             input,
             output,
             format,
-            watch,
             verbose,
             no_toc: _,
             no_images,
         } => {
-            handle_build_command(input, output, format, watch, verbose, no_images)?;
+            handle_build_command(input, output, format, verbose, no_images)?;
         }
 
         Commands::Validate {
@@ -162,7 +161,6 @@ fn handle_build_command(
     input: std::path::PathBuf,
     mut output: std::path::PathBuf,
     format_arg: Option<OutputFormat>,
-    watch: bool,
     verbose: bool,
     no_images: bool,
 ) -> Result<()> {
@@ -291,10 +289,6 @@ fn handle_build_command(
                 .with_context(|| format!("Failed to export PDF to {}", output.display()))?;
             println!("✓ Successfully wrote: {}", output.display());
         }
-    }
-
-    if watch {
-        println!("\nWatch mode not yet implemented");
     }
 
     println!("\n✓ Build completed successfully!");
