@@ -32,6 +32,10 @@ email = "approver@example.com"
 # The path should be relative to the document root or absolute
 # Supported formats: PNG, JPEG, SVG
 # title_page_background = "images/title-background.png"
+
+# Optional heading color for PDF output as a hex color string
+# Default: "#2B579A" (a professional blue)
+# heading_color = "#2B579A"
 """
 
 # =============================================================================
