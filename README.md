@@ -58,57 +58,65 @@ sysdoc validate --check-links --check-images
 
 ### Prerequisites
 
-- Rust 1.70+ (2021 edition)
-- Cargo
+- Rust 1.70+ (2021 edition) and Cargo
+- [`just`](https://just.systems) - command runner for the development tasks
 
-### Quick Build
+  ```bash
+  cargo install just
+  ```
+
+Then install the cargo subcommands the checks rely on (`cargo-deny` and
+`cargo-audit`):
 
 ```bash
-# Windows
-build.bat
-
-# Linux/Mac
-./build.sh
+just install-tools
 ```
 
-### Manual Build Steps
+### Dev Container
+
+The repository ships a [dev container](.devcontainer/devcontainer.json) with the
+Rust toolchain, `just`, `cargo-deny` and `cargo-audit` preinstalled. Open the
+folder in VS Code and choose **Reopen in Container**, or use the GitHub Codespaces
+button, and everything below works without further setup.
+
+### Build
 
 ```bash
-# Check formatting
-cargo fmt --check
+# Build the release binary (target/release/sysdoc)
+just build
 
-# Run linter
-cargo clippy -- -D warnings
+# Run every check: format, lint, test, release build, docs, licenses, advisories
+just check
 
-# Run tests
-cargo test
-
-# Build release binary
-cargo build --release
-
-# Generate documentation
-cargo doc --no-deps
+# List all available tasks
+just
 ```
 
 The release binary will be at `target/release/sysdoc` (or `sysdoc.exe` on Windows).
 
+### Individual Tasks
+
+Each step of `just check` is also available on its own:
+
+| Command | Description |
+| --- | --- |
+| `just fmt` | Format all Rust sources in place |
+| `just fmt-check` | Fail if any source is unformatted |
+| `just clippy` | Lint with clippy, warnings as errors |
+| `just test` | Run the unit and integration tests |
+| `just build` | Build the release binary |
+| `just build-debug` | Build the debug binary |
+| `just doc` | Build the API documentation |
+| `just deny` | Check dependency licenses and advisories |
+| `just audit` | Scan dependencies for known vulnerabilities |
+| `just validate-docx` | Validate DOCX fixtures against the OOXML schema |
+| `just run <args>` | Run sysdoc from source, e.g. `just run build examples/minimal-sdd -o out.pdf` |
+| `just clean` | Remove all build artifacts |
+
+`just validate-docx` needs the OOXML validator, which `just install-ooxml-validator`
+downloads for you.
+
 ### Development Tools
-
-**Required:**
-
-- `cargo-deny` - License and advisory checking
-
-  ```bash
-  cargo install cargo-deny
-  cargo deny check
-  ```
-
-- `cargo-audit` - Security vulnerability scanner
-
-  ```bash
-  cargo install cargo-audit
-  cargo audit
-  ```
 
 **Recommended:**
 
@@ -198,19 +206,13 @@ at your option.
 
 ## Contributing
 
-Contributions are welcome! Please ensure:
-
-1. Code is formatted: `cargo fmt`
-2. Clippy passes: `cargo clippy -- -D warnings`
-3. Tests pass: `cargo test`
-4. Security checks pass: `cargo deny check` and `cargo audit`
-
-Or simply run the build script:
+Contributions are welcome! Please run the full check suite before opening a pull
+request:
 
 ```bash
-# Windows
-build.bat
-
-# Linux/Mac
-./build.sh
+just check
 ```
+
+This covers formatting, clippy, tests, the release build, documentation, license
+compliance and security advisories. See
+[Individual Tasks](#individual-tasks) to run any of those steps on its own.

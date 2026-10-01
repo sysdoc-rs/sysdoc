@@ -1,0 +1,38 @@
+{
+  "name": "sysdoc",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Keep the crate registry in a named volume so rebuilding the container
+  // does not re-download every dependency. The target/ directory stays on the
+  // bind mount so release binaries are visible from the host.
+  "mounts": [
+    "source=sysdoc-cargo-registry,target=/usr/local/cargo/registry,type=volume"
+  ],
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "nefrob.vscode-just-syntax",
+        "hediet.vscode-drawio",
+        "DavidAnson.vscode-markdownlint",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "rust-analyzer.check.command": "clippy",
+        "rust-analyzer.check.extraArgs": ["--all-targets", "--all-features"]
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}

@@ -50,49 +50,49 @@ This is a Cargo workspace with the following structure:
 
 ### Building
 
+Development tasks are defined in the [`justfile`](justfile). Run `just` to list them.
+
 ```bash
-# Build the project
-cargo build
+# Run every check: fmt, clippy, test, release build, docs, deny, audit
+just check
 
-# Build with optimizations
-cargo build --release
+# Build the release binary (target/release/sysdoc)
+just build
 
-# Run the application
-cargo run
-
-# Run tests
-cargo test
-
-# Run clippy
-cargo clippy
-
-# Format code
-cargo fmt
-
-# Check licenses and security advisories
-cargo deny check
-cargo audit
+# Individual steps
+just fmt            # format in place
+just fmt-check      # fail if unformatted
+just clippy         # clippy with warnings as errors
+just test           # unit and integration tests
+just build-debug    # debug binary
+just doc            # API documentation
+just deny           # license and advisory check
+just audit          # vulnerability scan
+just validate-docx  # OOXML schema validation of DOCX fixtures
+just run <args>     # run sysdoc from source, e.g. just run build examples/minimal-sdd -o out.pdf
+just clean          # remove build artifacts
 ```
+
+`just check` is the single command to run before committing. It replaces the
+former `build.sh` / `build.bat` scripts.
 
 ### Development Tools
 
-**Required security tools:**
+The [dev container](.devcontainer/devcontainer.json) installs all of the tooling
+below. Outside the container, install `just` with `cargo install just` and then
+run `just install-tools`.
+
+**Required tools:**
+
+- `just` - command runner for the tasks in the `justfile`
 
 - `cargo-deny` - License and advisory checker
-
-  ```bash
-  cargo install cargo-deny
-  ```
 
   Enforces permissive open source licenses and checks for security vulnerabilities. Configuration in `deny.toml` allows only permissive licenses (MIT, Apache-2.0, BSD, etc.) and denies copyleft licenses (GPL, LGPL, AGPL).
 
 - `cargo-audit` - Security vulnerability scanner
 
-  ```bash
-  cargo install cargo-audit
-  ```
-
-  Scans dependencies for known security vulnerabilities from the RustSec Advisory Database.
+  Scans dependencies for known security vulnerabilities from the RustSec Advisory Database. Ignored advisories are listed in `audit.toml`.
 
 ## Architecture
 
@@ -188,10 +188,7 @@ Preparing for v1.0.0 release on crates.io.
 
 After implementation:
 
-1. `cargo test` - all tests pass
-2. `cargo clippy -- -D warnings` - no warnings
-3. `cargo fmt --check` - properly formatted
-4. `cargo deny check` - license compliance
-5. `sysdoc validate examples/minimal-sdd` - validation works
-6. `sysdoc build examples/minimal-sdd -o test.docx` - build runs validation
-7. `cargo publish --dry-run` - ready for crates.io
+1. `just check` - tests, clippy, formatting, docs, license compliance and audit all pass
+2. `sysdoc validate examples/minimal-sdd` - validation works
+3. `sysdoc build examples/minimal-sdd -o test.docx` - build runs validation
+4. `cargo publish --dry-run` - ready for crates.io
